@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmo Vastu Login</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo">
+                <img src="{% static 'images/vastulogo.png' %}" alt="Call-Astro Logo">
+            </div>
+            <h1>Welcome !</h1>
+            <p class="subtitle">Sign in to continue to Cosmo-Vastu</p>
+
+            <form id="login-form" method="POST">
+                {% csrf_token %}
+                {% if error %}
+                <p style="color:red">{{ error }}</p>
+                {% endif %}
+                <div class="input-group">
+                    <span class="icon">👤</span>
+                    <input type="text" name="username" placeholder="Your Name" required>
+                </div>
+                <div class="input-group">
+                    <span class="icon">📧</span>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                </div>
+                <button type="submit" class="sign-in-btn">Sign In</button>
+            </form>
+
+            <!-- Loading Screen -->
+            <div id="loading-screen" style="display: none;">
+                <div class="loading-box">
+                    <img src="{% static 'images/loading.gif' %}" alt="Loading..." width="100">
+                    <h2>Loading...</h2>
+                    <p style="margin-bottom: 10px;">"The Book of Nature is written in numbers"<br><small>-
+                            Galileo</small></p>
+                    <div class="loader-bar">
+                        <div class="progress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                const form = document.getElementById('login-form');
+                const loadingScreen = document.getElementById('loading-screen');
+
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault(); // Stop normal submit
+                    loadingScreen.style.display = 'flex'; // Show loading
+
+                    setTimeout(() => {
+                        form.submit(); // Real submit after 2s
+                    }, 2000); // Adjust time here (in milliseconds)
+                });
+            </script>
+
+        </div>
+    </div>
+</body>
+
+</html>

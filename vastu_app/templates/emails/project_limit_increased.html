@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .container {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fafafa;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+    }
+    h2 {
+      color: #5b00f0;
+    }
+    .otp-box {
+      font-size: 28px;
+      font-weight: bold;
+      color: #5b00f0;
+      margin: 20px 0;
+      letter-spacing: 10px;
+    }
+    p {
+      color: #333;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🚀 Project Limit Update</h2>
+    <p>Hi <strong>{{ username }}</strong>,</p>
+    <p>Thank you for using <strong>Cosmo Vastu</strong>!</p>
+    <p>Your project creation limit has been increased by <strong>{{ extra_limit }}</strong>.</p>
+    <div class="otp-box">{{ new_limit }}</div>
+    <p>You can now create up to <strong>{{ new_limit }}</strong> projects.</p>
+    <p>Please don’t share this information with anyone.</p>
+    <div class="footer">
+      © Cosmo Vastu Team
+    </div>
+  </div>
+</body>
+</html>

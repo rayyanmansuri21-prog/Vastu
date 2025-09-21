@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+  height: 100vh;
+  background: linear-gradient(135deg, #fdfbfb, #ebedee);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-container {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 40px 30px;
+  border-radius: 20px;
+  box-shadow: 0 0 25px rgba(255, 200, 150, 0.3);
+  border: 2px solid transparent;
+  animation: borderGlow 5s infinite;
+  width: 350px;
+  text-align: center;
+  transition: box-shadow 0.3s ease;
+}
+
+@keyframes borderGlow {
+  0% {
+    border-color: #f6d365;
+    box-shadow: 0 0 10px #f6d365;
+  }
+  50% {
+    border-color: #fda085;
+    box-shadow: 0 0 25px #fda085;
+  }
+  100% {
+    border-color: #f6d365;
+    box-shadow: 0 0 10px #f6d365;
+  }
+}
+
+.login-container h2 {
+  color: #5e4b2c;
+  margin-bottom: 30px;
+  font-weight: 500;
+}
+
+input[type="text"], input[type="password"] {
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  background-color: #fafafa;
+  transition: border 0.3s ease;
+}
+
+input[type="text"]:focus, input[type="password"]:focus {
+  border-color: #f6c56d;
+  box-shadow: 0 0 8px rgba(246, 197, 109, 0.4);
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #f6d365, #fda085);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background: linear-gradient(135deg, #fda085, #f6d365);
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  cursor: pointer;
+  user-select: none;
+  color: #888;
+}

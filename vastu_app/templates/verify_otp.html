@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Verify OTP</title>
+    <link rel="stylesheet" href="{% static 'css/otp.css' %}">
+</head>
+
+<body>
+    <div class="otp-container">
+        <div class="otp-box">
+            <h2>🔒 Verification Code</h2>
+            <p>Please enter the 4-digit code<br>sent to your phone</p>
+
+            <form method="POST" id="otp-form">
+                {% csrf_token %}
+                <div class="otp-input-box">
+                    <input type="text" name="otp1" maxlength="1" class="otp-digit" required>
+                    <input type="text" name="otp2" maxlength="1" class="otp-digit" required>
+                    <input type="text" name="otp3" maxlength="1" class="otp-digit" required>
+                    <input type="text" name="otp4" maxlength="1" class="otp-digit" required>
+                </div>
+                {% if error %}
+                <p style="color:red; text-align: center;">{{ error }}</p>
+                {% endif %}
+
+                <div class="btn-group">
+                    <button type="submit" class="verify-btn">Verify Code</button>
+                    <a href="{% url 'login' %}" class="cancel-btn">Cancel</a>
+                </div>
+            </form>
+
+            <!-- Loading Screen -->
+            <div id="loading-screen" style="display: none;">
+                <div class="loading-box">
+                    <img src="{% static 'images/loading.gif' %}" alt="Loading..." width="100">
+                    <h2>Loading...</h2>
+                    <p style="margin-bottom: 10px;">"The Book of Nature is written in numbers"<br><small>-
+                            Galileo</small></p>
+                    <div class="loader-bar">
+                        <div class="progress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // OTP auto-focus logic
+        const inputs = document.querySelectorAll(".otp-digit");
+        inputs.forEach((input, index) => {
+            input.addEventListener("input", () => {
+                if (input.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Backspace" && index > 0 && input.value === "") {
+                    inputs[index - 1].focus();
+                }
+            });
+        });
+
+        // Form submit with loader
+        const form = document.getElementById('otp-form');
+        const loadingScreen = document.getElementById('loading-screen');
+
+        form.addEventListener('submit', function (e) {
+            const allFilled = Array.from(inputs).every(input => input.value.trim().length === 1);
+            if (!allFilled) {
+                alert("Please enter all 4 digits of the OTP.");
+                return;
+            }
+
+            e.preventDefault();
+            loadingScreen.style.display = 'flex';
+
+            setTimeout(() => {
+                form.submit();
+            }, 2000);
+        });
+
+    </script>
+</body>
+
+</html>

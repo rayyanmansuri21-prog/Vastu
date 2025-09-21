@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmo Vastu Admin Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/admin_login.css' %}">
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="glow-border"></div>
+    <div class="login-box">
+      <h2>Admin Login</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="text" name="username" placeholder="Username" required />
+        <div class="password-wrapper">
+          <input type="password" id="passwordInput" name="password" placeholder="Password" required />
+          <i class="toggle-password" onclick="togglePassword()">👁️</i>
+        </div>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    function togglePassword() {
+      const input = document.getElementById("passwordInput");
+      const btn = document.querySelector(".toggle-password");
+      if (input.type === "password") {
+        input.type = "text";
+        btn.textContent = "🙈";
+      } else {
+        input.type = "password";
+        btn.textContent = "👁️";
+      }
+    }
+
+    // ==== Glow cursor movement ====
+    const cursor = document.getElementById('glowCursor');
+    document.addEventListener('mousemove', (e) => {
+      cursor.style.top = `${e.clientY}px`;
+      cursor.style.left = `${e.clientX}px`;
+    });
+
+    // ==== Particles Background ====
+    const canvas = document.getElementById('particles-bg');
+    const ctx = canvas.getContext('2d');
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+    let particles = [];
+
+    window.addEventListener('resize', () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    });
+
+    function Particle() {
+      this.x = Math.random() * w;
+      this.y = Math.random() * h;
+      this.vx = Math.random() * 1 - 0.5;
+      this.vy = Math.random() * 1 - 0.5;
+      this.radius = Math.random() * 1.5 + 1;
+      this.draw = function () {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff30';
+        ctx.fill();
+      };
+      this.update = function () {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x > w || this.x < 0) this.vx *= -1;
+        if (this.y > h || this.y < 0) this.vy *= -1;
+        this.draw();
+      };
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < 100; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, w, h);
+      particles.forEach(p => p.update());
+      requestAnimationFrame(animateParticles);
+    }
+
+    initParticles();
+    animateParticles();
+
+  </script>
+
+</body>
+
+</html>

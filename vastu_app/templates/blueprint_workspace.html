@@ -1,0 +1,2261 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-F-8">
+  <title>Blueprint Workspace</title>
+  <link rel="stylesheet" href="{% static 'css/blueprint_workspace.css' %}">
+  <script src="https://unpkg.com/docx@7.7.0/build/index.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="icon" href="data:,">
+</head>
+
+<body>
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+  <input type="hidden" id="projectId" value="{{ project.id }}">
+  <input type="hidden" id="hiddenCompassDegree" value="0">
+  <input type="hidden" id="hiddenDegreeEast" value="0">
+  <input type="hidden" id="hiddenDegreeSouth" value="0">
+  <input type="hidden" id="hiddenDegreeWest" value="0">
+  <div class="workspace-container">
+    <div class="left-sidebar">
+      <div class="section" id="geometryTools">
+        <h3>Geometry Tools</h3>
+        <button class="option-btn" onclick="enableSelectMode()">Select Points</button>
+        <button class="option-btn" onclick="undoPoint()">Undo Point</button>
+        <button class="option-btn" onclick="resetPoints()">Reset Points</button>
+        <button class="option-btn" onclick="calculateCentroid()">Calculate Centroid</button>
+      </div>
+
+      <div class="section" id="compassControls">
+        <h3>Compass Controls</h3>
+        <button class="option-btn" onclick="setCompass()">Set Compass</button>
+        <button class="option-btn" onclick="resetCompass()">Reset Compass</button>
+        <button class="option-btn" onclick="stopCompass()" id="stopCompassBtn">🛑 Stop Compass</button>
+        <div class="rotation-controls">
+          <div class="rotation-options">
+            <div class="radio-item">
+              <input type="radio" id="basic" name="rotationPrecision" value="basic" checked>
+              <label for="basic">Basic (1°)</label>
+            </div>
+            <div class="radio-item">
+              <input type="radio" id="fine" name="rotationPrecision" value="fine">
+              <label for="fine">Fine (10°)</label>
+            </div>
+            <div class="radio-item">
+              <input type="radio" id="coarse" name="rotationPrecision" value="coarse">
+              <label for="coarse">Coarse (30°)</label>
+            </div>
+          </div>
+          <button class="option-btn" onclick="rotateCompass('left')">Rotate Left</button>
+          <button class="option-btn" onclick="rotateCompass('right')">Rotate Right</button>
+        </div>
+      </div>
+
+
+      <div class="section">
+        <h3>Divide Blueprint</h3>
+        <div class="divide-options">
+          <button class="divide-btn" onclick="divideBlueprint(8)">8</button>
+          <button class="divide-btn" onclick="divideBlueprint(16)">16</button>
+          <button class="divide-btn" onclick="divideBlueprint(32)">32</button>
+        </div>
+      </div>
+
+      <button onclick="plotGraph()" class="download-btn">📊 Plot Graph</button>
+      <button id="downloadBlueprintBtn" class="download-btn" onclick="downloadFinalBlueprint()">📄 Download
+        Blueprint</button>
+
+      <!-- onclick="downloadFinalBlueprint()"  -->
+    </div>
+
+    <div class="right-content">
+      <div class="image-container" id="imageContainer">
+        <div class="image-wrapper" id="imageWrapper">
+          <canvas id="divisionCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+          <canvas id="gridCanvas"
+            style="position: absolute; top: 0; left: 0; pointer-events: none; display: none;"></canvas>
+          <img src="{{ project.blueprint.url }}" alt="Blueprint Image" id="blueprintImage" class="fixed-blueprint">
+          <!-- <img src="{{ blueprint_path }}" alt="Uploaded Blueprint" id="blueprintImage"> -->
+          <img id="compassOverlay" src="{% static 'images/compass.png' %}" alt="Compass">
+        </div>
+        <div id="degreeLabels">
+          <div class="deg-label" id="deg-label-top">270°</div>
+          <div class="deg-label" id="deg-label-right">0°</div>
+          <div class="deg-label" id="deg-label-bottom">90°</div>
+          <div class="deg-label" id="deg-label-left">180°</div>
+        </div>
+      </div>
+      <div id="snackbar"></div>
+      <div id="loader"></div>
+    </div>
+  </div>
+
+  <script>
+    let selectMode = false;
+    const imageContainer = document.getElementById('imageContainer');
+    const blueprintImage = document.getElementById('blueprintImage');
+    const imageWrapper = document.getElementById('imageWrapper');
+    const divisionCanvas = document.getElementById('divisionCanvas');
+    const compassOverlay = document.getElementById('compassOverlay');
+    const dots = [];
+    const lines = [];
+    // let centroidDot = null;
+    let compassRotation = 0;
+    let trueZeroDirection = "right";
+    let vastuStartAngle = 0;
+    let selectedDivision = 8;
+    let capturedCentroidImage = null;
+    let captured8PartImage = null;
+    let captured16PartImage = null;
+    let captured32PartImage = null;
+    let points = [];
+    let centroid = null;
+    let finalCompassDegree = 0;
+
+
+    function getCookie(name) {
+      let c = null;
+      if (document.cookie) {
+        const cs = document.cookie.split(';');
+        for (let i = 0; i < cs.length; i++) {
+          const C = cs[i].trim();
+          if (C.substring(0, name.length + 1) === (name + '=')) {
+            c = decodeURIComponent(C.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return c;
+    }
+    const csrftoken = getCookie('csrftoken');
+    function showSnackbar(msg) {
+      const b = document.getElementById('snackbar');
+      b.textContent = msg;
+      b.className = 'show';
+      setTimeout(() => b.className = b.className.replace('show', '')
+        , 3000);
+    }
+
+    imageWrapper.addEventListener('click', (e) => {
+      if (!selectMode) return;
+      const rect = imageWrapper.getBoundingClientRect();
+      // हम क्लिक की पोजीशन को सीधे इमेज रैपर के सापेक्ष नापेंगे
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // पुराने DOM डॉट्स को हटाएं और पॉइंट्स को स्टोर करें
+      const oldDots = imageWrapper.querySelectorAll('.dot');
+      oldDots.forEach(d => d.remove());
+
+      points.push({ x, y });
+      centroid = null; // नई पॉइंट जोड़ने पर सेंट्रोइड रीसेट करें
+
+      // नए DOM डॉट्स बनाएं (सिर्फ दिखाने के लिए)
+      redrawDOMOverlays();
+    });
+
+    function redrawDOMOverlays() {
+      // पुराने ओवरले हटाएं
+      imageWrapper.querySelectorAll('.dot, .line, .centroid-dot').forEach(el => el.remove());
+
+      // डॉट्स बनाएं
+      points.forEach(p => {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.style.left = p.x + 'px';
+        dot.style.top = p.y + 'px';
+        imageWrapper.appendChild(dot);
+      });
+
+      // सेंट्रोइड और लाइनें बनाएं (अगर मौजूद हैं)
+      if (centroid) {
+        // लाइनें
+        for (let i = 0; i < points.length; i++) {
+          const p1 = points[i];
+          const p2 = points[(i + 1) % points.length];
+          const length = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+          const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+
+          const line = document.createElement('div');
+          line.className = 'line';
+          line.style.left = `${p1.x}px`;
+          line.style.top = `${p1.y}px`;
+          line.style.width = `${length}px`;
+          line.style.transform = `rotate(${angle}deg)`;
+          imageWrapper.appendChild(line);
+        }
+
+        // सेंट्रोइड डॉट
+        const cDot = document.createElement('div');
+        cDot.className = 'centroid-dot';
+        cDot.style.left = centroid.x + 'px';
+        cDot.style.top = centroid.y + 'px';
+        imageWrapper.appendChild(cDot);
+      }
+    }
+
+
+
+
+
+    // इस पूरे ब्लॉक को अपने मौजूदा addEventListener से बदलें
+    // document.getElementById("downloadBlueprintBtn").addEventListener("click", async function () {
+    //   if (!centroidDot) {
+    //     showSnackbar("⚠️ Please calculate the centroid before downloading.");
+    //     return;
+    //   }
+    //   showSnackbar("🚀 Preparing your document... Please wait.");
+    //   document.getElementById('loader').style.display = 'block';
+    //   const elementToCapture = document.getElementById('imageWrapper');
+    //   const gridCanvas = document.getElementById('gridCanvas');
+    //   const payload = {};
+    //   try {
+    //     gridCanvas.style.display = 'none';
+    //     const divisionCanvas = document.getElementById("divisionCanvas");
+    //     const divCtx = divisionCanvas.getContext("2d");
+    //     divCtx.clearRect(0, 0, divisionCanvas.width, divisionCanvas.height);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.centroid_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+    //     divideBlueprint(8);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.divided_8_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+    //     divideBlueprint(16);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.divided_16_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+    //     divideBlueprint(32);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.divided_32_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+    //     showSnackbar("✅ Captures complete. Sending to server...");
+    //     const projectId = document.getElementById('projectId').value;
+    //     const endpoint = `/download-word-blueprint/${projectId}/`;
+    //     const response = await fetch(endpoint, {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+    //       body: JSON.stringify(payload)
+    //     });
+    //     if (!response.ok) {
+    //       const errorData = await response.json();
+    //       throw new Error(errorData.error || "Failed to generate Word file!");
+    //     }
+    //     const blob = await response.blob();
+    //     const url = window.URL.createObjectURL(blob);
+    //     const link = document.createElement("a");
+    //     link.href = url;
+    //     link.download = "blueprint_analysis.docx";
+    //     link.click();
+    //     window.URL.revokeObjectURL(url);
+    //     showSnackbar("✔️ Document downloaded successfully!");
+    //   } catch (err) {
+    //     console.error("Download Error:", err);
+    //     alert("Something went wrong! " + err.message);
+    //   } finally {
+    //     gridCanvas.style.display = 'block';
+    //     document.getElementById('loader').style.display = 'none';
+    //   }
+    // });
+
+    // async function captureAndSave(imageType) {
+    //   showSnackbar(`Saving ${imageType} image...`);
+    //   try {
+    //     // 1. एक नया, अदृश्य 800x600 का कैनवस बनाएं
+    //     const finalCanvas = document.createElement('canvas');
+    //     finalCanvas.width = 880;
+    //     finalCanvas.height = 600;
+    //     const finalCtx = finalCanvas.getContext('2d');
+
+    //     // 2. बैकग्राउंड को CSS जैसा बनाएं
+    //     finalCtx.fillStyle = '#f8f8f8';
+    //     finalCtx.fillRect(0, 0, 880, 600);
+
+    //     // 3. ब्लूप्रिंट इमेज को 'object-fit: contain' लॉजिक से ड्रॉ करें
+    //     const img = blueprintImage;
+    //     const canvasAspectRatio = 880 / 600;
+    //     const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+    //     let finalWidth, finalHeight, x, y;
+
+    //     if (imgAspectRatio > canvasAspectRatio) {
+    //       finalWidth = 880;
+    //       finalHeight = finalWidth / imgAspectRatio;
+    //       x = 0;
+    //       y = (600 - finalHeight) / 2;
+    //     } else {
+    //       finalHeight = 600;
+    //       finalWidth = finalHeight * imgAspectRatio;
+    //       y = 0;
+    //       x = (880 - finalWidth) / 2;
+    //     }
+    //     finalCtx.drawImage(img, x, y, finalWidth, finalHeight);
+
+    //     // 4. ब्राउज़र में दिख रहे डॉट्स/लाइन्स को इस नए कैनवस पर फिर से ड्रॉ करें
+    //     // यह स्केलिंग फैक्टर है जो ब्राउज़र के आकार और 800x600 के बीच अनुवाद करेगा
+    //     const scaleX = 880 / imageWrapper.clientWidth;
+    //     const scaleY = 600 / imageWrapper.clientHeight;
+
+    //     // लाइन्स
+    //     if (centroid) {
+    //       finalCtx.strokeStyle = 'yellow';
+    //       finalCtx.lineWidth = 4;
+    //       for (let i = 0; i < points.length; i++) {
+    //         const p1 = points[i];
+    //         const p2 = points[(i + 1) % points.length];
+    //         finalCtx.beginPath();
+    //         finalCtx.moveTo(p1.x * scaleX, p1.y * scaleY);
+    //         finalCtx.lineTo(p2.x * scaleX, p2.y * scaleY);
+    //         finalCtx.stroke();
+    //       }
+    //     }
+
+    //     // डॉट्स
+    //     finalCtx.fillStyle = 'yellow';
+    //     finalCtx.strokeStyle = 'black';
+    //     finalCtx.lineWidth = 1.5;
+    //     points.forEach(p => {
+    //       finalCtx.beginPath();
+    //       finalCtx.arc(p.x * scaleX, p.y * scaleY, 6, 0, 2 * Math.PI);
+    //       finalCtx.fill();
+    //       finalCtx.stroke();
+    //     });
+
+    //     // सेंट्रोइड
+    //     if (centroid) {
+    //       finalCtx.fillStyle = 'red';
+    //       finalCtx.strokeStyle = 'black';
+    //       finalCtx.lineWidth = 2;
+    //       finalCtx.beginPath();
+    //       finalCtx.arc(centroid.x * scaleX, centroid.y * scaleY, 8, 0, 2 * Math.PI);
+    //       finalCtx.fill();
+    //       finalCtx.stroke();
+    //     }
+
+    //     // 5. इस परफेक्ट 800x600 कैनवस को डेटा में बदलें
+    //     const imageData = finalCanvas.toDataURL('image/jpeg', 0.95);
+
+    //     // 6. डेटाबेस में भेजें
+    //     const projectId = document.getElementById('projectId').value;
+    //     const response = await fetch(`/save-project-image/${projectId}/`, {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+    //       body: JSON.stringify({ image_data: imageData, image_type: imageType })
+    //     });
+
+    //     if (!response.ok) throw new Error('Server error during save.');
+
+    //     showSnackbar(`✅ ${imageType} image saved successfully!`);
+
+    //   } catch (err) {
+    //     showSnackbar(`❌ Error saving ${imageType}: ${err.message}`);
+    //   }
+    // }
+
+    // async function captureAndSave(imageType) {
+    //   showSnackbar(`Saving ${imageType} image...`);
+    //   try {
+    //     // 1. Create canvas (keep your 880x600 size)
+    //     const finalCanvas = document.createElement('canvas');
+    //     finalCanvas.width = 880;
+    //     finalCanvas.height = 600;
+    //     const finalCtx = finalCanvas.getContext('2d');
+
+    //     // 2. Set background (keep your styling)
+    //     finalCtx.fillStyle = '#f8f8f8';
+    //     finalCtx.fillRect(0, 0, 880, 600);
+
+    //     // 3. Draw blueprint image with contain logic (keep your exact code)
+    //     const img = blueprintImage;
+    //     const canvasAspectRatio = 880 / 600;
+    //     const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+    //     let finalWidth, finalHeight, x, y;
+
+    //     if (imgAspectRatio > canvasAspectRatio) {
+    //       finalWidth = 880;
+    //       finalHeight = finalWidth / imgAspectRatio;
+    //       x = 0;
+    //       y = (600 - finalHeight) / 2;
+    //     } else {
+    //       finalHeight = 600;
+    //       finalWidth = finalHeight * imgAspectRatio;
+    //       y = 0;
+    //       x = (880 - finalWidth) / 2;
+    //     }
+    //     finalCtx.drawImage(img, x, y, finalWidth, finalHeight);
+
+    //     // Calculate scaling factors (keep your exact scaling)
+    //     const scaleX = 880 / imageWrapper.clientWidth;
+    //     const scaleY = 600 / imageWrapper.clientHeight;
+
+    //     // NEW: Determine what to draw based on imageType
+    //     if (imageType === 'centroid') {
+    //       // Draw only centroid elements
+    //       drawCentroidElements(finalCtx, scaleX, scaleY);
+    //     }
+    //     else if (imageType === 'compass') {
+    //       // Draw only compass (it will be added in next step)
+    //       drawCompassElements(finalCtx, scaleX, scaleY);
+    //     }
+    //     else if (imageType.includes('divided')) {
+    //       // Draw only division lines
+    //       drawDivisionElements(finalCtx, scaleX, scaleY, imageType);
+    //     }
+
+    //     // Convert to data URL (keep your exact code)
+    //     const imageData = finalCanvas.toDataURL('image/jpeg', 0.95);
+
+    //     // Save to server (keep your exact code)
+    //     const projectId = document.getElementById('projectId').value;
+    //     const response = await fetch(`/save-project-image/${projectId}/`, {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+    //       body: JSON.stringify({ image_data: imageData, image_type: imageType })
+    //     });
+
+    //     if (!response.ok) throw new Error('Server error during save.');
+    //     showSnackbar(`✅ ${imageType} image saved successfully!`);
+
+    //   } catch (err) {
+    //     showSnackbar(`❌ Error saving ${imageType}: ${err.message}`);
+    //   }
+    // }
+
+    async function captureAndSave(imageType) {
+      // Ensure all rendering is complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      try {
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = 880;
+        finalCanvas.height = 600;
+        const finalCtx = finalCanvas.getContext('2d');
+
+        // Set background
+        finalCtx.fillStyle = '#f8f8f8';
+        finalCtx.fillRect(0, 0, 880, 600);
+
+        // Draw blueprint image with correct aspect ratio
+        const img = blueprintImage;
+        const canvasAspectRatio = 880 / 600;
+        const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+        let finalWidth, finalHeight, x, y;
+
+        if (imgAspectRatio > canvasAspectRatio) {
+          finalWidth = 880;
+          finalHeight = finalWidth / imgAspectRatio;
+          x = 0;
+          y = (600 - finalHeight) / 2;
+        } else {
+          finalHeight = 600;
+          finalWidth = finalHeight * imgAspectRatio;
+          y = 0;
+          x = (880 - finalWidth) / 2;
+        }
+        finalCtx.drawImage(img, x, y, finalWidth, finalHeight);
+
+        // Calculate scaling factors
+        const scaleX = 880 / imageWrapper.clientWidth;
+        const scaleY = 600 / imageWrapper.clientHeight;
+
+        // Draw elements based on image type
+        if (imageType === 'centroid') {
+          drawCentroidElements(finalCtx, scaleX, scaleY);
+        }
+        else if (imageType === 'compass') {
+          drawCompassElements(finalCtx, scaleX, scaleY);
+        }
+        else if (imageType.includes('divided')) {
+          drawDivisionElements(finalCtx, scaleX, scaleY, imageType);
+        }
+
+        // Convert to data URL
+        const imageData = finalCanvas.toDataURL('image/jpeg', 0.95);
+
+        // Save to server
+        const projectId = document.getElementById('projectId').value;
+        const response = await fetch(`/save-project-image/${projectId}/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+          body: JSON.stringify({ image_data: imageData, image_type: imageType })
+        });
+
+        if (!response.ok) throw new Error('Server error during save.');
+        showSnackbar(`✅ ${imageType} image saved successfully!`);
+
+      } catch (err) {
+        showSnackbar(`❌ Error saving ${imageType}: ${err.message}`);
+      }
+    }
+
+
+    // NEW: Helper function to draw centroid elements
+    function drawCentroidElements(ctx, scaleX, scaleY) {
+      // Lines
+      if (centroid) {
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 4;
+        for (let i = 0; i < points.length; i++) {
+          const p1 = points[i];
+          const p2 = points[(i + 1) % points.length];
+          ctx.beginPath();
+          ctx.moveTo(p1.x * scaleX, p1.y * scaleY);
+          ctx.lineTo(p2.x * scaleX, p2.y * scaleY);
+          ctx.stroke();
+        }
+      }
+
+      // Dots
+      ctx.fillStyle = 'yellow';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1.5;
+      points.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x * scaleX, p.y * scaleY, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      // Centroid
+      if (centroid) {
+        ctx.fillStyle = 'red';
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centroid.x * scaleX, centroid.y * scaleY, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    function drawCompassElements(ctx, scaleX, scaleY) {
+      const compass = document.getElementById('compassOverlay');
+      if (!compass) return;
+
+      // Calculate compass position and size
+      const compassRect = compass.getBoundingClientRect();
+      const wrapperRect = imageWrapper.getBoundingClientRect();
+
+      const x = (compassRect.left - wrapperRect.left) * scaleX;
+      const y = (compassRect.top - wrapperRect.top) * scaleY;
+      const width = compassRect.width * scaleX;
+      const height = compassRect.height * scaleY;
+
+      // Create a temporary canvas to draw the rotated compass
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      // Draw the compass with rotation
+      tempCtx.save();
+      tempCtx.translate(width / 2, height / 2);
+      tempCtx.rotate(compassRotation * Math.PI / 180);
+      tempCtx.drawImage(compass, -width / 2, -height / 2, width, height);
+      tempCtx.restore();
+
+      // Draw the compass onto our main canvas
+      ctx.drawImage(tempCanvas, x, y, width, height);
+    }
+
+    //old code new code right below thiss................
+    // function drawDivisionElements(ctx, scaleX, scaleY, imageType) {
+    //   const parts = parseInt(imageType.split('_')[1]); // Extract 8, 16, or 32
+
+    //   // Draw division lines
+    //   ctx.strokeStyle = 'blue';
+    //   ctx.lineWidth = 1.2 * scaleX; // Scale line width
+
+    //   const cx = centroid.x * scaleX;
+    //   const cy = centroid.y * scaleY;
+    //   const radius = Math.min(880, 600) / 2 * 1.1 * scaleX;
+    //   const angleStep = (2 * Math.PI) / parts;
+    //   const rotationOffset = (Math.PI / 180) * compassRotation;
+
+    //   for (let i = 0; i < parts; i++) {
+    //     const angle = angleStep * i + rotationOffset;
+    //     const x = cx + radius * Math.cos(angle);
+    //     const y = cy + radius * Math.sin(angle);
+
+    //     ctx.beginPath();
+    //     ctx.moveTo(cx, cy);
+    //     ctx.lineTo(x, y);
+    //     ctx.stroke();
+    //   }
+
+    //   // Draw labels if needed
+    //   const labels = getCustomRotatedLabels(parts, compassRotation);
+    //   const labelRadius = radius - (60 * scaleX);
+
+    //   ctx.font = `bold ${13 * scaleX}px Arial`;
+    //   ctx.textAlign = "center";
+    //   ctx.textBaseline = "middle";
+
+    //   for (let i = 0; i < parts; i++) {
+    //     if (labels && labels[i]) {
+    //       const angle = angleStep * i + rotationOffset;
+    //       const labelX = cx + labelRadius * Math.cos(angle);
+    //       const labelY = cy + labelRadius * Math.sin(angle);
+    //       const labelText = labels[i];
+
+    //       const textMetrics = ctx.measureText(labelText);
+    //       const padding = 6 * scaleX;
+    //       const boxWidth = textMetrics.width + padding * 2;
+    //       const boxHeight = 20 * scaleY;
+
+    //       ctx.fillStyle = "green";
+    //       ctx.fillRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight);
+
+    //       ctx.fillStyle = "white";
+    //       ctx.fillText(labelText, labelX, labelY);
+    //     }
+    //   }
+    // }
+    //new codeeeeeeeeee.........................................................
+
+    function drawDivisionElements(ctx, scaleX, scaleY, imageType) {
+      const parts = parseInt(imageType.split('_')[1]);
+
+      const cx = centroid.x * scaleX;
+      const cy = centroid.y * scaleY;
+      const radius = Math.min(880, 600) / 2 * 1.1 * scaleX;
+      const angleStep = (2 * Math.PI) / parts;
+      const rotationRadians = compassRotation * (Math.PI / 180);
+      const labels = getCustomRotatedLabels(parts);
+
+      ctx.strokeStyle = 'blue';
+      ctx.lineWidth = 1.2 * scaleX;
+
+      for (let i = 0; i < parts; i++) {
+        const lineAngle = angleStep * i + rotationRadians;
+        const x = cx + radius * Math.cos(lineAngle);
+        const y = cy + radius * Math.sin(lineAngle);
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        if (labels[i]) {
+          const labelAngle = lineAngle + (angleStep / 2);
+
+          const labelRadius = radius - (80 * scaleX);
+          const labelX = cx + labelRadius * Math.cos(labelAngle);
+          const labelY = cy + labelRadius * Math.sin(labelAngle);
+          const labelText = labels[i];
+
+          ctx.font = `bold ${13 * scaleX}px Arial`;
+          const textMetrics = ctx.measureText(labelText);
+          const padding = 6 * scaleX;
+          const boxWidth = textMetrics.width + padding * 2;
+          const boxHeight = 20 * scaleY;
+
+          ctx.fillStyle = "green";
+          ctx.fillRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight);
+
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(labelText, labelX, labelY);
+        }
+      }
+    }
+
+
+    async function fetchGraphImage(divisions) {
+      showSnackbar(`Generating graph for ${divisions} divisions...`);
+      try {
+        const projectId = document.getElementById('projectId').value;
+        const endpoint = `/generate-graph-data/${projectId}/`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+          },
+          body: JSON.stringify({
+            divisions: divisions
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server could not generate graph for ${divisions} divisions.`);
+        }
+
+        const data = await response.json();
+        if (!data.graph_image_base64) {
+          throw new Error(`Backend response for ${divisions}-part graph is missing image data.`);
+        }
+
+        showSnackbar(`✅ Graph for ${divisions} divisions generated.`);
+        return data.graph_image_base64;
+
+      } catch (error) {
+        console.error("Error fetching graph image:", error);
+        showSnackbar(`❌ Failed to generate graph for ${divisions} parts.`);
+        throw error;
+      }
+    }
+
+
+    // document.getElementById('downloadBlueprintBtn').onclick = function () {
+    //   const projectId = document.getElementById('projectId').value;
+    //   window.location.href = `/download-word-blueprint/${projectId}/`; 
+    // };
+
+    //downloadword file.............
+    async function downloadFinalBlueprint() {
+      if (!centroid) {
+        showSnackbar("⚠️ Please calculate the centroid before downloading.");
+        return;
+      }
+      showSnackbar("🚀 Preparing your document... Please wait.");
+      document.getElementById('loader').style.display = 'block';
+      const elementToCapture = document.getElementById('imageWrapper');
+      const payload = {};
+
+      try {
+        // const userAvatarElement = document.getElementById('profileAvatarToCapture');
+        // payload.profile_avatar_image = await html2canvas(userAvatarElement, { scale: 2, backgroundColor: null }).then(c => c.toDataURL());
+        // payload.user_name = document.getElementById('userName').value;
+        // payload.user_email = document.getElementById('userEmail').value;
+
+
+        // console.log("Preparing download. The stored compass degree is:", finalCompassDegree);
+        const savedDegree = document.getElementById('hiddenCompassDegree').value;
+        payload.degree_north = document.getElementById('hiddenCompassDegree').value;
+        payload.degree_east = document.getElementById('hiddenDegreeEast').value;
+        payload.degree_south = document.getElementById('hiddenDegreeSouth').value;
+        payload.degree_west = document.getElementById('hiddenDegreeWest').value;
+        payload.compass_degree = savedDegree;
+        console.log("Reading all degrees from hidden inputs for payload:", payload);
+
+        // --- 1. Capture Centroid Image ---
+        // Clear any previous divisions to get a clean centroid shot
+        const divCtx = divisionCanvas.getContext("2d");
+        divCtx.clearRect(0, 0, divisionCanvas.width, divisionCanvas.height);
+        await new Promise(res => setTimeout(res, 200)); // Wait for canvas to clear
+        payload.centroid_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+        showSnackbar("✅ Centroid image captured.");
+
+        // --- 2. Capture 8-Part Division Image ---
+        divideBlueprint(8, false); // Call divide without showing snackbar
+        await new Promise(res => setTimeout(res, 200)); // Wait for render
+        payload.divided_8_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+        showSnackbar("✅ 8-part division captured.");
+        payload.graph_8_image = await fetchGraphImage(8);
+
+        // --- 3. Capture 16-Part Division Image ---
+        divideBlueprint(16, false);
+        await new Promise(res => setTimeout(res, 200));
+        payload.divided_16_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+        showSnackbar("✅ 16-part division captured.");
+        payload.graph_16_image = await fetchGraphImage(16);
+
+
+        // --- 4. Capture 32-Part Division Image ---
+        divideBlueprint(32, false);
+        await new Promise(res => setTimeout(res, 200));
+        payload.divided_32_image = await html2canvas(elementToCapture, { scale: 2, useCORS: true, backgroundColor: null }).then(c => c.toDataURL());
+        showSnackbar("✅ 32-part division captured.");
+        payload.graph_32_image = await fetchGraphImage(32);
+
+
+        // --- 5. Send to Server to Generate Word Document ---
+        showSnackbar("✅ All captures complete. Sending to server...");
+        const projectId = document.getElementById('projectId').value;
+        const endpoint = `/download-word-blueprint/${projectId}/`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+          body: JSON.stringify(payload)
+        });
+
+        let blob;
+
+        if (response.ok) {
+          // ✅ Success case → sirf blob ek baar read karo
+          blob = await response.blob();
+        } else {
+          // ❌ Error case → sirf ek baar JSON ya text read karo
+          let errorMsg = "Failed to generate Word file!";
+          try {
+            const data = await response.json();
+            if (data.error) errorMsg = data.error;
+          } catch {
+            const text = await response.text();
+            errorMsg = "Server error: " + text.substring(0, 200);
+          }
+          throw new Error(errorMsg);
+        }
+
+        // ✅ Agar yaha aaye ho to matlab response.ok tha → ab download trigger karo
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "blueprint_analysis.docx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        showSnackbar("✔️ Document downloaded successfully!");
+
+
+
+        // --- 6. Trigger Download ---
+        // const blob = await response.blob();
+        // const url = window.URL.createObjectURL(blob);
+        // const link = document.createElement("a");
+        // link.href = url;
+        // link.download = "blueprint_analysis.docx";
+        // document.body.appendChild(link);
+        // link.click();
+        // document.body.removeChild(link);
+        // window.URL.revokeObjectURL(url);
+        // showSnackbar("✔️ Document downloaded successfully!");
+
+      } catch (err) {
+        console.error("Download Error:", err);
+        showSnackbar("❌ Error: " + err.message);
+        alert("Something went wrong! " + err.message);
+      } finally {
+        document.getElementById('loader').style.display = 'none';
+        // Optional: clear the last division lines after download
+        const divCtx = divisionCanvas.getContext("2d");
+        divCtx.clearRect(0, 0, divisionCanvas.width, divisionCanvas.height);
+      }
+    }
+
+
+
+    function getRotationIncrement() {
+      const radios = document.getElementsByName("rotationPrecision");
+      let increment = 1; // Default basic
+
+      for (let i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+          if (radios[i].value === "basic") increment = 1;
+          else if (radios[i].value === "fine") increment = 10;
+          else if (radios[i].value === "coarse") increment = 30;
+          break;
+        }
+      }
+      return increment;
+    }
+
+    // function enableSelectMode() {
+    //   selectMode = true;
+    //   blueprintImage.style.cursor = 'crosshair';
+    // }
+    function enableSelectMode() {
+      selectMode = true;
+      imageWrapper.style.cursor = 'crosshair';
+    }
+
+    function showSnackbar(msg) {
+      const bar = document.getElementById('snackbar');
+      bar.textContent = msg;
+      bar.className = 'show';
+      setTimeout(() => bar.className = bar.className.replace('show', ''), 3000);
+    }
+
+    // function resetPoints() {
+    //   dots.forEach(dot => dot.remove());
+    //   lines.forEach(line => line.remove());
+    //   dots.length = 0;
+    //   lines.length = 0;
+    //   if (centroidDot) {
+    //     centroidDot.remove();
+    //     centroidDot = null;
+    //   }
+    // }
+
+    // function undoPoint() {
+    //   const last = dots.pop();
+    //   if (last) last.remove();
+    // }
+
+    function resetPoints() {
+      points = [];
+      centroid = null;
+      redrawDOMOverlays();
+      showSnackbar("Points reset.");
+    }
+    function undoPoint() {
+      if (points.length > 0) {
+        points.pop();
+        centroid = null;
+        redrawDOMOverlays();
+      }
+    }
+
+    imageWrapper.addEventListener('click', (e) => {
+      if (!selectMode) return;
+      const rect = imageWrapper.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      points.push({ x, y });
+      centroid = null;
+      redrawDOMOverlays();
+      // const dot = document.createElement('div');
+      // dot.className = 'dot';
+      // dot.style.left = `${x}px`;
+      // dot.style.top = `${y}px`;
+
+      // imageWrapper.appendChild(dot);
+      // dots.push(dot);
+    });
+
+    // async function calculateCentroid() {
+    //   if (dots.length < 3) {
+    //     showSnackbar("⚠️ Minimum 3 points required to calculate centroid");
+    //     return;
+    //   }
+
+    //   document.getElementById('loader').style.display = 'block';
+
+    //   setTimeout(async () => {
+    //     document.getElementById('loader').style.display = 'none';
+
+    //     // Clear existing lines
+    //     lines.forEach(line => line.remove());
+    //     lines.length = 0;
+
+    //     // Clear previous centroid if exists
+    //     if (centroidDot) {
+    //       centroidDot.remove();
+    //       centroidDot = null;
+    //     }
+
+    //     // Draw lines between dots
+    //     for (let i = 0; i < dots.length; i++) {
+    //       const d1 = dots[i], d2 = dots[(i + 1) % dots.length];
+    //       const x1 = parseFloat(d1.style.left), y1 = parseFloat(d1.style.top);
+    //       const x2 = parseFloat(d2.style.left), y2 = parseFloat(d2.style.top);
+
+    //       const length = Math.hypot(x2 - x1, y2 - y1);
+    //       const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    //       const line = document.createElement('div');
+    //       line.className = 'line';
+    //       line.style.left = `${x1}px`;
+    //       line.style.top = `${y1}px`;
+    //       line.style.width = `${length}px`;
+    //       line.style.transform = `rotate(${angle}deg)`;
+
+    //       imageWrapper.appendChild(line);
+    //       lines.push(line);
+    //     }
+
+    //     // Improved Centroid Calculation using Polygon Formula
+    //     let area = 0, cx = 0, cy = 0;
+    //     const n = dots.length;
+
+    //     for (let i = 0; i < n; i++) {
+    //       const x0 = parseFloat(dots[i].style.left);
+    //       const y0 = parseFloat(dots[i].style.top);
+    //       const x1 = parseFloat(dots[(i + 1) % n].style.left);
+    //       const y1 = parseFloat(dots[(i + 1) % n].style.top);
+
+    //       const cross = (x0 * y1) - (x1 * y0);
+    //       area += cross;
+    //       cx += (x0 + x1) * cross;
+    //       cy += (y0 + y1) * cross;
+    //     }
+
+    //     area = area / 2;
+    //     cx = cx / (6 * area);
+    //     cy = cy / (6 * area);
+
+    //     // Create and show centroid dot
+    //     centroidDot = document.createElement('div');
+    //     centroidDot.className = 'centroid-dot';
+    //     centroidDot.style.left = `${cx}px`;
+    //     centroidDot.style.top = `${cy}px`;
+    //     imageWrapper.appendChild(centroidDot);
+
+    //     showSnackbar("✅ Centroid Calculated.");
+    //     captureAndSave('centroid');
+    //   }, 1200);
+    // }
+
+    function calculateCentroid() {
+      if (points.length < 3) { showSnackbar("⚠️ Minimum 3 points required"); return; }
+      let area = 0, cx = 0, cy = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p0 = points[i];
+        const p1 = points[(i + 1) % points.length];
+        const cross = (p0.x * p1.y) - (p1.x * p0.y);
+        area += cross;
+        cx += (p0.x + p1.x) * cross;
+        cy += (p0.y + p1.y) * cross;
+      }
+      area /= 2;
+      centroid = { x: cx / (6 * area), y: cy / (6 * area) };
+      redrawDOMOverlays();
+      showSnackbar("✅ Centroid Calculated.");
+      captureAndSave('centroid');
+    }
+
+    function setCompass() {
+      const compass = document.getElementById("compassOverlay");
+      const blueprint = document.getElementById("blueprintImage");
+
+      if (!centroid) {
+        showSnackbar("⚠️ Please calculate centroid first.");
+        return;
+      }
+
+      const blueprintWidth = blueprint.clientWidth;
+      const compassSize = blueprint.clientWidth * 0.8;  // Changed from blueprintImage to blueprint
+
+      compass.style.width = `${compassSize}px`;
+      compass.style.height = `${compassSize}px`;
+
+      const blueprintRect = blueprint.getBoundingClientRect();
+
+      // Use centroid coordinates directly instead of centroidDot
+      const cx = centroid.x;
+      const cy = centroid.y;
+
+      compass.style.position = "absolute";
+      compass.style.left = `${cx - (compassSize / 2)}px`;
+      compass.style.top = `${cy - (compassSize / 2)}px`;
+
+      // Reset compass rotation when setting it
+      compassRotation = 0; // Ensures 0° is East initially
+      compass.style.transform = `rotate(${compassRotation}deg)`;
+      compass.style.display = "block";
+
+      const imgRect = blueprint.getBoundingClientRect();
+      const topLabel = document.getElementById("deg-label-top");
+      const bottomLabel = document.getElementById("deg-label-bottom");
+      const leftLabel = document.getElementById("deg-label-left");
+      const rightLabel = document.getElementById("deg-label-right");
+
+      const topOffset = 5;     // move closer to image
+      const bottomOffset = 40;  // move slightly further away
+      const sideOffset = 30;    // left/right remain the same
+
+      // Get image geometry
+      const imgLeft = blueprint.offsetLeft;
+      const imgTop = blueprint.offsetTop;
+      const imgWidth = blueprint.offsetWidth;
+      const imgHeight = blueprint.offsetHeight;
+
+      // Top
+      topLabel.style.left = `${imgLeft + imgWidth / 2}px`;
+      topLabel.style.top = `${imgTop - topOffset}px`;
+      topLabel.style.transform = "translate(-50%, -100%)";
+
+      // Bottom
+      bottomLabel.style.left = `${imgLeft + imgWidth / 2}px`;
+      bottomLabel.style.top = `${imgTop + imgHeight + bottomOffset}px`;
+      bottomLabel.style.transform = "translate(-50%, 0%)";
+
+      // Left
+      leftLabel.style.left = `${imgLeft - sideOffset}px`;
+      leftLabel.style.top = `${imgTop + imgHeight / 2}px`;
+      leftLabel.style.transform = "translate(-100%, -50%)";
+
+      // Right
+      rightLabel.style.left = `${imgLeft + imgWidth + sideOffset}px`;
+      rightLabel.style.top = `${imgTop + imgHeight / 2}px`;
+      rightLabel.style.transform = "translate(0%, -50%)";
+
+      document.getElementById("degreeLabels").style.display = "block";
+
+      updateDegreeLabels();
+    }
+
+    // function setCompass() {
+    //   const compass = document.getElementById("compassOverlay");
+    //   const blueprint = document.getElementById("blueprintImage");
+
+    //   if (!centroid) {
+    //     showSnackbar("⚠️ Please calculate centroid first.");
+    //     return;
+    //   }
+
+    //   const blueprintWidth = blueprint.clientWidth;
+    //   const compassSize = blueprintImage.clientWidth * 0.8;
+
+    //   compass.style.width = `${compassSize}px`;
+    //   compass.style.height = `${compassSize}px`;
+
+    //   const blueprintRect = blueprint.getBoundingClientRect();
+    //   const centroidRect = centroid.getBoundingClientRect();
+    //   const cx = centroidRect.left - blueprintRect.left + centroid.offsetWidth / 2;
+    //   const cy = centroidRect.top - blueprintRect.top + centroid.offsetHeight / 2;
+
+    //   compass.style.position = "absolute";
+    //   compass.style.left = `${cx - compassSize / 2}px`;
+    //   compass.style.top = `${cy - compassSize / 2}px`;
+    //   // Reset compass rotation when setting it
+    //   compassRotation = 0; // Ensures 0° is East initially
+    //   compass.style.transform = `rotate(${compassRotation}deg)`;
+    //   compass.style.display = "block";
+
+    //   const topLabel = document.getElementById("deg-label-top");
+    //   const bottomLabel = document.getElementById("deg-label-bottom");
+    //   const leftLabel = document.getElementById("deg-label-left");
+    //   const rightLabel = document.getElementById("deg-label-right");
+
+    //   const topOffset = 5;     // move closer to image
+    //   const bottomOffset = 40;  // move slightly further away
+    //   const sideOffset = 30;    // left/right remain the same
+
+    //   // Get image geometry
+    //   const imgLeft = blueprintImage.offsetLeft;
+    //   const imgTop = blueprintImage.offsetTop;
+    //   const imgWidth = blueprintImage.offsetWidth;
+    //   const imgHeight = blueprintImage.offsetHeight;
+
+    //   // Top
+    //   topLabel.style.left = `${imgLeft + imgWidth / 2}px`;
+    //   topLabel.style.top = `${imgTop - topOffset}px`;
+    //   topLabel.style.transform = "translate(-50%, -100%)";
+
+    //   // Bottom
+    //   bottomLabel.style.left = `${imgLeft + imgWidth / 2}px`;
+    //   bottomLabel.style.top = `${imgTop + imgHeight + bottomOffset}px`;
+    //   bottomLabel.style.transform = "translate(-50%, 0%)";
+
+    //   // Left
+    //   leftLabel.style.left = `${imgLeft - sideOffset}px`;
+    //   leftLabel.style.top = `${imgTop + imgHeight / 2}px`;
+    //   leftLabel.style.transform = "translate(-100%, -50%)";
+
+    //   // Right
+    //   rightLabel.style.left = `${imgLeft + imgWidth + sideOffset}px`;
+    //   rightLabel.style.top = `${imgTop + imgHeight / 2}px`;
+    //   rightLabel.style.transform = "translate(0%, -50%)";
+
+    //   document.getElementById("degreeLabels").style.display = "block";
+
+    //   updateDegreeLabels();
+    // }
+
+    // Rotate the compass left or right based on the chosen increment
+    function rotateCompass(direction) {
+      const increment = getRotationIncrement();
+      compassRotation += (direction === 'left' ? -increment : increment);
+      // Ensure compassRotation stays within 0-359 range
+      compassRotation = (compassRotation % 360 + 360) % 360;
+
+      const compass = document.getElementById("compassOverlay");
+      compass.style.transform = `rotate(${compassRotation}deg)`;
+
+      updateDegreeLabels();
+    }
+
+    function updateDegreeLabels() {
+      const baseNorth = 270;
+      const trueNorth = (baseNorth - compassRotation + 360) % 360;
+
+      const topDeg = trueNorth;
+      const rightDeg = (trueNorth + 90) % 360;
+      const bottomDeg = (trueNorth + 180) % 360;
+      const leftDeg = (trueNorth + 270) % 360;
+
+      document.getElementById("deg-label-top").textContent = `${topDeg}°`;
+      document.getElementById("deg-label-right").textContent = `${rightDeg}°`;
+      document.getElementById("deg-label-bottom").textContent = `${bottomDeg}°`;
+      document.getElementById("deg-label-left").textContent = `${leftDeg}°`;
+    }
+
+
+
+    function resetCompass() {
+      compassRotation = 0; // Reset internal rotation variable
+      const compass = document.getElementById("compassOverlay");
+      compass.style.transform = "rotate(0deg)"; // Reset visual rotation
+      updateDegreeLabels(); // Update labels to reflect reset
+    }
+
+    // function stopCompass() {
+    //   const geometryButtons = document.querySelectorAll('#geometryTools button');
+    //   const compassButtons = document.querySelectorAll('#compassControls button');
+
+    //   [...geometryButtons, ...compassButtons].forEach(btn => {
+    //     btn.disabled = true;
+    //     btn.classList.add('disabled');
+    //   });
+
+    //   document.getElementById("stopCompassBtn").disabled = true;
+
+    //   const compass = document.getElementById("compassOverlay");
+    //   compass.style.pointerEvents = "none";
+
+    //   // Always update degree labels before reading
+    //   updateDegreeLabels();
+
+    //   const northDegree = parseInt(document.getElementById("deg-label-top").textContent);
+    //   const eastDegree = parseInt(document.getElementById("deg-label-right").textContent);
+    //   const southDegree = parseInt(document.getElementById("deg-label-bottom").textContent);
+    //   const westDegree = parseInt(document.getElementById("deg-label-left").textContent);
+    //   finalCompassDegree = northDegree;
+    //   document.getElementById('hiddenCompassDegree').value = northDegree; // North
+    //   document.getElementById('hiddenDegreeEast').value = eastDegree;   // East
+    //   document.getElementById('hiddenDegreeSouth').value = southDegree; // South
+    //   document.getElementById('hiddenDegreeWest').value = westDegree;   // West
+
+    //   document.getElementById('hiddenCompassDegree').value = northDegree;
+    //   console.log(`Degrees saved: N=${northDegree}, E=${eastDegree}, S=${southDegree}, W=${westDegree}`);
+
+    //   const labels = {
+    //     top: parseInt(document.getElementById("deg-label-top").textContent),
+    //     right: parseInt(document.getElementById("deg-label-right").textContent),
+    //     bottom: parseInt(document.getElementById("deg-label-bottom").textContent),
+    //     left: parseInt(document.getElementById("deg-label-left").textContent)
+    //   };
+
+    //   let closestDir = 'right';
+    //   let minDiff = 360;
+
+    //   for (const [dir, deg] of Object.entries(labels)) {
+    //     const diff = Math.abs((deg + 360) % 360); // normalize
+    //     if (diff < minDiff) {
+    //       minDiff = diff;
+    //       closestDir = dir;
+    //       vastuStartAngle = deg; // 💥 set this angle (like 90, 180, 270)
+    //     }
+    //   }
+
+    //   showSnackbar(`🧭 Compass stopped. North (N) is at ${finalCompassDegree}°.`);
+    //   captureAndSave('compass');
+    //   drawGrid();
+    // }
+
+    // ... (आपका मौजूदा कोड) ...
+
+    // ... (आपका मौजूदा कोड) ...
+
+    function stopCompass() {
+      const geometryButtons = document.querySelectorAll('#geometryTools button');
+      const compassButtons = document.querySelectorAll('#compassControls button');
+
+      [...geometryButtons, ...compassButtons].forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+      });
+
+      document.getElementById("stopCompassBtn").disabled = true;
+
+      const compass = document.getElementById("compassOverlay");
+      compass.style.pointerEvents = "none";
+
+      // Always update degree labels before reading
+      updateDegreeLabels();
+
+      // ***** यहाँ बदलाव है: North की डिग्री अब 'deg-label-right' से ली जा रही है *****
+      const northDegree = parseInt(document.getElementById("deg-label-right").textContent);
+
+      finalCompassDegree = northDegree;
+      document.getElementById('hiddenCompassDegree').value = northDegree; // केवल North की डिग्री (जो अब right से है) सेव करें
+
+      // बाकी किसी भी दिशा की डिग्री को सेव करने की ज़रूरत नहीं है, जैसा कि आपने कहा।
+      // console log में भी केवल North दिखाएँ
+      console.log(`Degrees  are being  saved (North from Right Label): N=${northDegree}`);
+
+      // ये 'labels' ऑब्जेक्ट और 'closestDir' वाला लूप अब ज़रूरत से ज़्यादा हो सकता है
+      // अगर आपका N हमेशा deg-label-right है और आप सिर्फ़ उसी को लेना चाहते हैं।
+      // लेकिन अगर आपको भविष्य में किसी और दिशा की ज़रूरत पड़ सकती है, तो इसे रख सकते हैं।
+      // अभी के लिए, मैं इसे थोड़ा सरल कर रहा हूँ, क्योंकि आपका N फिक्स्ड है।
+
+      // अगर आपको vastuStartAngle को सीधे northDegree पर सेट करना है, तो ऐसे करें:
+      vastuStartAngle = northDegree; // vastuStartAngle सीधे right label की डिग्री पर सेट होगा
+
+      showSnackbar(`🧭 Compass stopped. North (N) is at ${finalCompassDegree}°.`);
+      captureAndSave('compass');
+      drawGrid();
+    }
+
+
+    function updateDegreeLabels() {
+      const baseNorth = 270;
+      const trueNorth = (baseNorth - compassRotation + 360) % 360;
+
+      const topDeg = trueNorth;
+      const rightDeg = (trueNorth + 90) % 360;
+      const bottomDeg = (trueNorth + 180) % 360;
+      const leftDeg = (trueNorth + 270) % 360;
+
+      document.getElementById("deg-label-top").textContent = `${topDeg}°`;
+      document.getElementById("deg-label-right").textContent = `${rightDeg}°`;
+      document.getElementById("deg-label-bottom").textContent = `${bottomDeg}°`;
+      document.getElementById("deg-label-left").textContent = `${leftDeg}°`;
+    }
+
+
+    function getCentroid() {
+      let sumX = 0, sumY = 0;
+      dots.forEach(dot => {
+        sumX += parseFloat(dot.style.left);
+        sumY += parseFloat(dot.style.top);
+      });
+      return {
+        x: sumX / dots.length,
+        y: sumY / dots.length
+      };
+    }
+
+    const vastuLabelPresets = {
+      8: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'],
+      16: ['N', 'NNE', 'NE', 'ENE',
+        'E', 'ESE', 'SE', 'SSE',
+        'S', 'SSW', 'SW', 'WSW',
+        'W', 'WNW', 'NW', 'NNW'],
+      32: [
+        'N5', 'N6', 'N7', 'N8', 'E1', 'E2', 'E3', 'E4',
+        'E5', 'E6', 'E7', 'E8', 'S1', 'S2', 'S3', 'S4',
+        'S5', 'S6', 'S7', 'S8', 'W1', 'W2', 'W3', 'W4',
+        'W5', 'W6', 'W7', 'W8', 'N1', 'N2', 'N3', 'N4'
+      ]
+    };
+
+    // old code
+    // function getCustomRotatedLabels(parts, redLineAngle) {
+    //   const labels = vastuLabelPresets[parts];
+    //   if (!labels) return [];
+
+    //   const total = labels.length;
+    //   const degreesPerPart = 360 / total;
+
+    //   if (parts === 32) {
+    //     // In 32-part logic, we want to align red line BETWEEN N4 and N5
+    //     // So find the index where redLineAngle falls, then shift so index+1 becomes N5
+    //     const segmentIndex = Math.floor((redLineAngle % 360) / degreesPerPart);
+
+    //     // We want N5 to be at index (segmentIndex + 1), so rotate such that N5 comes at that place
+    //     const n5Index = labels.indexOf('N5');
+    //     const shift = (n5Index - ((segmentIndex + 1) % total) + total) % total;
+
+    //     const rotated = [...labels.slice(shift), ...labels.slice(0, shift)];
+    //     return rotated;
+    //   }
+
+    //   // Standard rotation for other parts (8, 16, etc.)
+    //   const shiftIndex = Math.round((redLineAngle % 360) / degreesPerPart) % total;
+    //   const rotated = [...labels.slice(shiftIndex), ...labels.slice(0, shiftIndex)];
+    //   return rotated;
+    // }
+
+    // new code..........................
+    // function getCustomRotatedLabels(parts, redLineAngle) {
+    //   const labels = vastuLabelPresets[parts];
+    //   if (!labels) return [];
+
+    //   const total = labels.length;
+    //   const degreesPerPart = 360 / total;
+
+    //   if (parts === 32) {
+    //     // In 32-part logic, we want to align red line BETWEEN N4 and N5
+    //     // So find the index where redLineAngle falls, then shift so index+1 becomes N5
+    //     const segmentIndex = Math.floor((redLineAngle % 360) / degreesPerPart);
+
+    //     // We want N5 to be at index (segmentIndex + 1), so rotate such that N5 comes at that place
+    //     const n5Index = labels.indexOf('N5');
+    //     const shift = (n5Index - ((segmentIndex + 1) % total) + total) % total;
+
+    //     const rotated = [...labels.slice(shift), ...labels.slice(0, shift)];
+    //     return rotated;
+    //   }
+
+    //   // Standard rotation for other parts (8, 16, etc.)
+    //   const shiftIndex = Math.round((redLineAngle % 360) / degreesPerPart) % total;
+    //   const rotated = [...labels.slice(shiftIndex), ...labels.slice(0, shiftIndex)];
+    //   return rotated;
+    // }
+
+    //-------------------------new code to replace the above code
+    function getCustomRotatedLabels(parts, redLineAngle) {
+      const labels = vastuLabelPresets[parts];
+      if (!labels) return [];
+
+      const total = labels.length;
+      const degreesPerPart = 360 / total;
+
+      // Ensure redLineAngle is normalized to 0-359.99
+      const normalizedRedLineAngle = (redLineAngle % 360 + 360) % 360;
+
+      if (parts === 32) {
+        // For 32 parts, we want the compass's red North line (normalizedRedLineAngle)
+        // to align precisely with the boundary between N4 and N5.
+
+        // Let's assume in your `vastuLabelPresets[32]`:
+        // N4 is at index 0 (0 to 11.25 degrees)
+        // N5 is at index 1 (11.25 to 22.5 degrees)
+        // So, the boundary between N4 and N5 is at the END of the N4 segment, which is 1 * degreesPerPart.
+
+        // Calculate the default angle of the N4-N5 boundary in the *unrotated* labels array.
+        // If N4 is at index 0, the boundary is at (index 0 + 1) * degreesPerPart = 1 * degreesPerPart.
+        const presetN4N5BoundaryAngle = 1 * degreesPerPart; // This will be 11.25 degrees for 32 parts
+
+        // Calculate the rotation needed to move this preset N4-N5 boundary angle
+        // to where the 'normalizedRedLineAngle' (compass North) currently is.
+        // If normalizedRedLineAngle is 0 (true North), and presetN4N5BoundaryAngle is 11.25,
+        // we need to rotate the Vastu chart counter-clockwise by 11.25 degrees to align them.
+        // (target_angle - current_angle + 360) % 360
+        const rotationAmount = (normalizedRedLineAngle - presetN4N5BoundaryAngle + 360) % 360;
+
+        // Convert this rotation angle into the number of segments to shift the array.
+        // If rotationAmount is positive, we shift elements from end to start (clockwise rotation of chart).
+        // If rotationAmount is effectively negative (e.g., small positive value after +360),
+        // it means we shift elements from start to end (counter-clockwise rotation of chart).
+        const shift = Math.round(rotationAmount / degreesPerPart);
+
+        // Apply the circular shift to the labels array.
+        // The `(shift % total + total) % total` ensures the shift is always a positive index.
+        const effectiveShift = (shift % total + total) % total;
+
+        const rotated = [...labels.slice(effectiveShift), ...labels.slice(0, effectiveShift)];
+        return rotated;
+
+      } else {
+        // Standard rotation for other parts (8, 16, etc.)
+        // For these, we typically align the *center* of the 'N' segment with the red line.
+        // Assuming 'N' is labels[0] and its center is at degreesPerPart / 2 in the unrotated array.
+        const presetNorthCenterAngle = degreesPerPart / 2;
+        const rotationAmount = (normalizedRedLineAngle - presetNorthCenterAngle + 360) % 360;
+        const shift = Math.round(rotationAmount / degreesPerPart);
+        const effectiveShift = (shift % total + total) % total;
+
+        const rotated = [...labels.slice(effectiveShift), ...labels.slice(0, effectiveShift)];
+        return rotated;
+      }
+    }
+
+    // function getCustomRotatedLabels(parts, currentRotation = 0) {
+    //   // The variable is declared here: 'labels'
+    //   const labels = vastuLabelPresets[parts];
+    //   if (!labels) return [];
+
+    //   const total = labels.length;
+    //   const degreesPerPart = 360 / total;
+
+    //   // --- STEP 1: CORRECT THE BASE ALIGNMENT ---
+    //   // Canvas drawing starts at 0 degrees (East). We must find the 'East' label.
+    //   // For 8/16 parts, it's 'E'. For 32 parts, it's 'E5'.
+    //   const eastLabel = parts === 32 ? 'E5' : 'E';
+    //   const eastIndex = labels.indexOf(eastLabel);
+
+    //   // Create a new base array where the East direction is at index 0.
+    //   // We use the 'labels' variable here.
+    //   const alignedLabels = eastIndex !== -1
+    //     ? [...labels.slice(eastIndex), ...labels.slice(0, eastIndex)]
+    //     : [...labels]; // Fallback if 'E' isn't found
+
+    //   // --- STEP 2: APPLY THE USER'S DYNAMIC ROTATION ---
+    //   // Calculate how many segments the compass was rotated by.
+    //   const shiftCount = Math.round((currentRotation % 360) / degreesPerPart);
+
+    //   // Rotate the aligned labels by that amount.
+    //   // NOTE: The rotation is applied to 'alignedLabels', not the original 'labels'
+    //   const finalRotatedLabels = [
+    //     ...alignedLabels.slice(shiftCount),
+    //     ...alignedLabels.slice(0, shiftCount)
+    //   ];
+
+    //   return finalRotatedLabels;
+    // }
+
+
+    // function getRotatedVastuLabels(parts, redLineAngle) {
+    //   const labels = vastuLabelPresets[parts];
+    //   if (!labels) return [];
+
+    //   const total = labels.length;
+    //   const degreesPerPart = 360 / total;
+
+    //   // 🔁 Shift index based on red line angle
+    //   const shiftIndex = Math.round((redLineAngle % 360) / degreesPerPart) % total;
+
+    //   // 🔄 Rotate labels: set redLineAngle as 'N'
+    //   const rotated = [...labels.slice(shiftIndex), ...labels.slice(0, shiftIndex)];
+
+    //   return rotated;
+    // }
+
+    //newcode by deepseek===========================================================
+    // function divideBlueprint(parts) {
+    //   if (!centroid) {
+    //     showSnackbar("⚠️ Please calculate centroid first.");
+    //     return;
+    //   }
+    //   selectedDivision = parts;
+
+    //   const canvas = document.getElementById("divisionCanvas");
+    //   const blueprint = document.getElementById("blueprintImage");
+    //   const image = document.getElementById("blueprintImage");
+    //   canvas.width = image.clientWidth;
+    //   canvas.height = image.clientHeight;
+
+    //   const ctx = canvas.getContext("2d");
+
+    //   // Fixed the canvas clearing - removed divisionCanvas/width typo
+    //   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    //   const canvas1 = document.getElementById("gridCanvas");
+    //   const gridSize = 20;
+    //   const gridPoints = [];
+
+    //   for (let x = gridSize / 2; x < canvas1.width; x += gridSize) {
+    //     for (let y = gridSize / 2; y < canvas1.height; y += gridSize) {
+    //       gridPoints.push([x, y]);
+    //     }
+    //   }
+
+    //   // Changed to use centroid object instead of centroidDot
+    //   const blueprintRect = blueprint.getBoundingClientRect();
+    //   const cx = centroid.x;
+    //   const cy = centroid.y;
+
+    //   const angleStep = (2 * Math.PI) / parts;
+    //   const radius = Math.min(canvas.width, canvas.height) / 2 * 1.2;
+
+    //   const rotationOffset = (Math.PI / 180) * compassRotation;
+
+    //   // Fixed to pass compassRotation to get labels properly aligned
+    //   let labels = getCustomRotatedLabels(parts);
+
+
+
+    //   ctx.strokeStyle = "blue";
+    //   ctx.lineWidth = 1.2;
+
+    //   for (let i = 0; i < parts; i++) {
+    //     const angle = angleStep * i + rotationOffset;
+    //     const x = cx + radius * Math.cos(angle);
+    //     const y = cy + radius * Math.sin(angle);
+
+    //     ctx.beginPath();
+    //     ctx.moveTo(cx, cy);
+    //     ctx.lineTo(x, y);
+    //     ctx.stroke();
+
+    //     if (labels && labels[i]) {
+    //       const labelAngle = angle + (angleStep / 2);
+    //       const maxRadius = Math.min(canvas.width, canvas.height) / 2;
+    //       const labelRadius = maxRadius - 60;
+
+    //       const labelX = cx + labelRadius * Math.cos(labelAngle);
+    //       const labelY = cy + labelRadius * Math.sin(labelAngle);
+
+    //       const labelText = labels[i];
+    //       ctx.font = "bold 13px Arial";
+    //       const textMetrics = ctx.measureText(labelText);
+    //       const padding = 6;
+    //       const boxWidth = textMetrics.width + padding * 2;
+    //       const boxHeight = 20;
+
+    //       ctx.fillStyle = "green";
+    //       ctx.fillRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight);
+
+    //       ctx.fillStyle = "white";
+    //       ctx.textAlign = "center";
+    //       ctx.textBaseline = "middle";
+    //       ctx.fillText(labelText, labelX, labelY);
+    //     }
+    //   }
+
+    //   showSnackbar(`Divided into ${parts} parts`);
+    //   captureAndSave(`divided_${parts}`);
+    //   // Keep the grid analysis code
+    //   fetch("/analyze-grid/", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //       "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+    //     },
+    //     body: JSON.stringify({
+    //       grid_data: gridPoints,
+    //       compass_center: [cx, cy],
+    //       divisions: parts,
+    //       compass_rotation: compassRotation
+    //     }),
+    //   })
+    //     .then(res => res.json())
+    //     .then(data => {
+    //       console.log("Direction-wise counts:", data);
+    //     });
+    // }
+    //-----------------------------------------------upper wale code ka replacement from deepseek
+    // ... (rest of your existing code in divideBlueprint) ...
+
+    function divideBlueprint(parts, showMsg = true) { // Added showMsg parameter
+      if (!centroid) {
+        if (showMsg) showSnackbar("⚠️ Please calculate centroid first.");
+        return;
+      }
+      selectedDivision = parts;
+
+      const canvas = document.getElementById("divisionCanvas");
+      const blueprint = document.getElementById("blueprintImage");
+      const image = document.getElementById("blueprintImage");
+      canvas.width = image.clientWidth;
+      canvas.height = image.clientHeight;
+
+      const ctx = canvas.getContext("2d");
+
+      // Clear existing division lines
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // The gridCanvas is separate and doesn't need to be drawn here
+      // const canvas1 = document.getElementById("gridCanvas");
+      // const gridSize = 20;
+      // const gridPoints = [];
+      // for (let x = gridSize / 2; x < canvas1.width; x += gridSize) {
+      //   for (let y = gridSize / 2; y < canvas1.height; y += gridSize) {
+      //     gridPoints.push([x, y]);
+      //   }
+      // }
+
+
+      // Use centroid object instead of centroidDot
+      const cx = centroid.x;
+      const cy = centroid.y;
+
+      const angleStep = (2 * Math.PI) / parts; // Angle in radians for each segment
+      const radius = Math.min(canvas.width, canvas.height) / 2 * 1.2;
+
+      // `compassRotation` is the rotation of the compass overlay image
+      // It dictates how the 0-degree mark (East) of the *overlay* is rotated.
+      // When drawing lines, `rotationOffset` rotates the entire set of division lines
+      // relative to the canvas's 0-degree (East).
+      const rotationOffsetRadians = (Math.PI / 180) * compassRotation;
+
+      // Get labels. Note: The `getCustomRotatedLabels` function doesn't need `redLineAngle` anymore.
+      let labels = getCustomRotatedLabels(parts);
+
+      // Draw blue division lines
+      ctx.strokeStyle = "blue";
+      ctx.lineWidth = 1.2;
+
+      for (let i = 0; i < parts; i++) {
+        // The angle for the start of the current division line
+        const currentLineAngleRadians = angleStep * i + rotationOffsetRadians;
+        const x = cx + radius * Math.cos(currentLineAngleRadians);
+        const y = cy + radius * Math.sin(currentLineAngleRadians);
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        // Draw labels in the middle of each segment
+        if (labels && labels[i]) {
+          const labelAngleRadians = currentLineAngleRadians + (angleStep / 2); // Center of the segment
+          const maxRadius = Math.min(canvas.width, canvas.height) / 2;
+          const labelRadius = maxRadius - 60; // Adjust label radius as needed
+
+          const labelX = cx + labelRadius * Math.cos(labelAngleRadians);
+          const labelY = cy + labelRadius * Math.sin(labelAngleRadians);
+
+          const labelText = labels[i];
+          ctx.font = "bold 13px Arial";
+          const textMetrics = ctx.measureText(labelText);
+          const padding = 6;
+          const boxWidth = textMetrics.width + padding * 2;
+          const boxHeight = 20;
+
+          ctx.fillStyle = "green";
+          ctx.fillRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight);
+
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(labelText, labelX, labelY);
+        }
+      }
+
+      // --- Draw the Red Line for 32 Parts ---
+      // if (parts === 32) {
+      //   // We want the red line to be between N4 and N5.
+      //   // In `vastuLabelPresets[32]`, N4 is at index 0 and N5 is at index 1.
+      //   // When we shifted the labels in `getCustomRotatedLabels`, N5 became the first label (index 0).
+      //   // This means the line *before* N5 (i.e., the line separating N4 and N5)
+      //   // is the line at `rotationOffsetRadians` (i.e., the `i=0` line after rotation).
+      //   const n4N5BoundaryAngleRadians = rotationOffsetRadians; // This is the starting line of the N5 segment (which is the split point)
+
+      //   ctx.strokeStyle = "red";
+      //   ctx.lineWidth = 2; // Make the red line slightly thicker for emphasis
+
+      //   const redLineX = cx + radius * Math.cos(n4N5BoundaryAngleRadians);
+      //   const redLineY = cy + radius * Math.sin(n4N5BoundaryAngleRadians);
+
+      //   ctx.beginPath();
+      //   ctx.moveTo(cx, cy);
+      //   ctx.lineTo(redLineX, redLineY);
+      //   ctx.stroke();
+      // }
+      // --- End Red Line Drawing ---
+
+      if (showMsg) showSnackbar(`Divided into ${parts} parts`);
+      // Ensure captureAndSave is called after all drawing is complete
+      setTimeout(() => captureAndSave(`divided_${parts}`), 100);
+
+      // Keep the grid analysis code (ensure gridPoints are collected correctly if needed)
+      // Currently, `gridPoints` are collected for `canvas1` (gridCanvas) which might be hidden.
+      // If `gridPoints` are actually needed for backend analysis, you might need to
+      // generate them based on `image.clientWidth` and `image.clientHeight`.
+      // The current `gridPoints` collection needs to be inside `divideBlueprint`
+      // if it's used with `fetch("/analyze-grid/")`.
+      const currentGridPoints = [];
+      const currentGridSize = 20;
+      for (let x = currentGridSize / 2; x < image.clientWidth; x += currentGridSize) {
+        for (let y = currentGridSize / 2; y < image.clientHeight; y += currentGridSize) {
+          currentGridPoints.push([x, y]);
+        }
+      }
+
+      fetch("/analyze-grid/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({
+          grid_data: currentGridPoints, // Use the locally collected gridPoints
+          compass_center: [cx, cy],
+          divisions: parts,
+          compass_rotation: compassRotation // Send compassRotation for backend to interpret
+        }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Direction-wise counts:", data);
+        })
+        .catch(error => {
+          console.error("Error during grid analysis:", error);
+        });
+    }
+
+
+    //old code..................................................................
+    // function divideBlueprint(parts) {
+    //   if (!centroid) {
+    //     showSnackbar("⚠️ Please calculate centroid first.");
+    //     return;
+    //   }
+    //   selectedDivision = parts;
+
+    //   const canvas = document.getElementById("divisionCanvas");
+    //   const blueprint = document.getElementById("blueprintImage");
+    //   const image = document.getElementById("blueprintImage");
+    //   canvas.width = image.clientWidth;
+    //   canvas.height = image.clientHeight;
+
+    //   const ctx = canvas.getContext("2d");
+
+    //   //new code starts here..
+    //   divisionCanvas.width = imageWrapper.clientWidth;
+    //   divisionCanvas.height = imageWrapper.clientHeight;
+    //   ctx.clearRect(0, 0, divisionCanvas / width, divisionCanvas.height);
+    //   //new code ends here..
+
+
+
+    //   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    //   const canvas1 = document.getElementById("gridCanvas");
+    //   const gridSize = 20;
+    //   const gridPoints = [];
+
+    //   for (let x = gridSize / 2; x < canvas1.width; x += gridSize) {
+    //     for (let y = gridSize / 2; y < canvas1.height; y += gridSize) {
+    //       gridPoints.push([x, y]);
+    //     }
+    //   }
+
+    //   const blueprintRect = blueprint.getBoundingClientRect();
+    //   const centroidRect = centroidDot.getBoundingClientRect();
+    //   const cx = centroidRect.left - blueprintRect.left + centroidDot.offsetWidth / 2;
+    //   const cy = centroidRect.top - blueprintRect.top + centroidDot.offsetHeight / 2;
+
+    //   const angleStep = (2 * Math.PI) / parts;
+    //   const radius = Math.min(canvas.width, canvas.height) / 2 * 1.2;
+
+    //   const rotationOffset = (Math.PI / 180) * compassRotation;
+
+    //   let labels = getCustomRotatedLabels(parts);
+
+    //   // 🌟 Special override for 32 divisions to insert N5 after 0°
+    //   // if (parts === 32) {
+    //   //   const baseLabels = getCustomRotatedLabels(parts,angle); // still get shifted from compass
+    //   //   const customLabels = [];
+
+    //   //   const degPerPart = 360 / parts; // 11.25
+    //   //   const shiftIndex = Math.round((compassRotation % 360) / degPerPart) % 32;
+
+    //   //   // Rotate base labels to align with compass rotation
+    //   //   for (let i = 0; i < parts; i++) {
+    //   //     customLabels.push(baseLabels[(i + shiftIndex) % parts]);
+    //   //   }
+
+    //   //   // Insert N5 at index 1, shift the rest
+    //   //   customLabels[1] = "N5";
+    //   //   for (let i = 2; i < parts; i++) {
+    //   //     customLabels[i] = baseLabels[(i + shiftIndex - 1 + parts) % parts];
+    //   //   }
+
+    //   //   labels = customLabels;
+    //   // }
+
+    //   ctx.strokeStyle = "blue";
+    //   ctx.lineWidth = 1.2;
+
+    //   for (let i = 0; i < parts; i++) {
+    //     const angle = angleStep * i + rotationOffset;
+    //     const x = cx + radius * Math.cos(angle);
+    //     const y = cy + radius * Math.sin(angle);
+
+    //     ctx.beginPath();
+    //     ctx.moveTo(cx, cy);
+    //     ctx.lineTo(x, y);
+    //     ctx.stroke();
+
+    //     if (labels && labels[i]) {
+    //       const maxRadius = Math.min(canvas.width, canvas.height) / 2;
+    //       const labelRadius = maxRadius - 60;
+
+    //       const labelX = cx + labelRadius * Math.cos(angle);
+    //       const labelY = cy + labelRadius * Math.sin(angle);
+
+    //       const labelText = labels[i];
+    //       ctx.font = "bold 13px Arial";
+    //       const textMetrics = ctx.measureText(labelText);
+    //       const padding = 6;
+    //       const boxWidth = textMetrics.width + padding * 2;
+    //       const boxHeight = 20;
+
+    //       ctx.fillStyle = "green";
+    //       ctx.fillRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight);
+
+    //       ctx.fillStyle = "white";
+    //       ctx.textAlign = "center";
+    //       ctx.textBaseline = "middle";
+    //       ctx.fillText(labelText, labelX, labelY);
+    //     }
+    //   }
+
+    //   showSnackbar(`Divided into ${parts} parts`);
+    //   setTimeout(() => captureAndSave(`divided_${parts}`), 100);
+    //   // 🔽 GET BLOCK CENTERS FROM GRID
+    //   fetch("/analyze-grid/", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //       "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+    //     },
+    //     body: JSON.stringify({
+    //       grid_data: gridPoints,
+    //       compass_center: [cx, cy],
+    //       divisions: parts  // send parts explicitly
+    //     }),
+    //   })
+    //     .then(res => res.json())
+    //     .then(data => {
+    //       console.log("Direction-wise counts:", data);
+    //     });
+    // }
+
+
+
+
+    // window.addEventListener("load", () => {
+    //   const downloadBtn = document.getElementById("downloadBlueprintBtn");
+
+    //   downloadBtn.addEventListener("click", async () => {
+    //     // Wait until docx library is available
+    //     if (!window.docx) {
+    //       alert("docx library not loaded yet!");
+    //       return;
+    //     }
+
+    //     const { Document, Packer, Paragraph, Media } = window.docx;
+
+    //     // Find the canvas
+    //     const canvas = document.getElementById("divisionCanvas");
+    //     if (!canvas) {
+    //       alert("Canvas not found!");
+    //       return;
+    //     }
+
+    //     // Convert canvas to PNG base64
+    //     const imageDataUrl = canvas.toDataURL("image/png");
+    //     const imageBlob = dataURLtoBlob(imageDataUrl);
+
+    //     // Create doc
+    //     const doc = new Document();
+    //     const image = Media.addImage(doc, imageBlob, 600, 400);
+
+    //     doc.addSection({
+    //       children: [
+    //         new Paragraph("Blueprint with Centroid"),
+    //         new Paragraph(image),
+    //       ],
+    //     });
+
+    //     const docBlob = await Packer.toBlob(doc);
+    //     saveAs(docBlob, "blueprint.docx");
+    //   });
+
+    // Helper to convert base64 to Blob
+    // function dataURLtoBlob(dataurl) {
+    //   const arr = dataurl.split(",");
+    //   const mime = arr[0].match(/:(.*?);/)[1];
+    //   const bstr = atob(arr[1]);
+    //   let n = bstr.length;
+    //   const u8arr = new Uint8Array(n);
+    //   while (n--) {
+    //     u8arr[n] = bstr.charCodeAt(n);
+    //   }
+    //   return new Blob([u8arr], { type: mime });
+    // }
+    // });
+
+
+
+    function plotGraph() {
+      // 1. Ek naya form element banayein
+      const form = document.createElement("form");
+      form.method = "POST";
+
+      // 2. Action ko apne backend URL par point karein
+      // Best practice: Django ke URL tag ka istemal karein
+      form.action = "{% url 'download_blueprint' %}";
+
+      // 3. Sabse zaroori: Form ka target "_blank" set karein taki result nayi window mein khule
+      form.target = "_blank";
+
+      // 4. CSRF token ko form mein jodein (POST request ke liye zaroori hai)
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden";
+      csrfInput.name = "csrfmiddlewaretoken";
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+
+      // 5. Form ko page par jodein aur submit kar dein
+      document.body.appendChild(form);
+      form.submit();
+
+      // 6. Submit karne ke baad form ko page se hata dein
+      document.body.removeChild(form);
+    }
+
+
+    // fetch("/export-word/{{ blueprint_id }}/")
+    //   .then((res) => {
+    //     if (!res.ok) throw new Error("Failed to download!");
+    //     return res.blob();
+    //   })
+    //   .then((blob) => {
+    //     const url = window.URL.createObjectURL(blob);
+    //     const link = document.createElement("a");
+    //     link.href = url;
+    //     link.download = "blueprint.docx";
+    //     link.click();
+    //   })
+    //   .catch((err) => alert("Error: " + err));
+
+    // async function captureImageWrapper() {
+    //   const wrapper = document.getElementById('imageWrapper');
+    //   console.log("Capturing screenshot of image-wrapper...");
+
+    //   // स्क्रीनशॉट लेने से पहले सभी एलिमेंट्स को एक बार फिर से दिखाएँ
+    //   wrapper.querySelectorAll('.dot, .line, .centroid-dot').forEach(el => {
+    //     el.style.display = 'block';
+    //   });
+
+    //   return await html2canvas(wrapper, {
+    //     scale: 2.5,
+    //     useCORS: true,
+    //     logging: false,
+    //     backgroundColor: '#FFFFFF'
+    //   }).then(canvas => canvas.toDataURL('image/png', 1.0));
+    // }
+
+    // function createBaseCanvas() {
+    //   const blueprintImg = document.getElementById('blueprintImage');
+    //   const newCanvas = document.createElement('canvas');
+    //   newCanvas.width = blueprintImg.naturalWidth; // ओरिजिनल इमेज की चौड़ाई
+    //   newCanvas.height = blueprintImg.naturalHeight; // ओरिजिनल इमेज की ऊंचाई
+    //   const ctx = newCanvas.getContext('2d');
+    //   ctx.drawImage(blueprintImg, 0, 0, newCanvas.width, newCanvas.height);
+    //   return { canvas: newCanvas, ctx: ctx };
+    // }
+
+    // /**
+    //  * फंक्शन 2: दिए गए कैनवस पर सेंट्रोइड (डॉट्स, लाइन्स, केंद्र) ड्रॉ करता है।
+    //  */
+    // function drawCentroidLayer(ctx, imgElement) {
+    //   const scaleX = imgElement.naturalWidth / imgElement.clientWidth;
+    //   const scaleY = imgElement.naturalHeight / imgElement.clientHeight;
+
+    //   // 1. पीली लाइनें ड्रॉ करें
+    //   ctx.strokeStyle = 'yellow';
+    //   ctx.lineWidth = 6; // लाइन्स को मोटा करें
+    //   lines.forEach(line => {
+    //     const x1 = parseFloat(line.style.left) * scaleX;
+    //     const y1 = parseFloat(line.style.top) * scaleY;
+    //     const width = parseFloat(line.style.width) * scaleX;
+    //     const angleRad = parseFloat(line.style.transform.replace('rotate(', '').replace('deg)', '')) * Math.PI / 180;
+    //     const x2 = x1 + width * Math.cos(angleRad);
+    //     const y2 = y1 + width * Math.sin(angleRad);
+    //     ctx.beginPath();
+    //     ctx.moveTo(x1, y1);
+    //     ctx.lineTo(x2, y2);
+    //     ctx.stroke();
+    //   });
+
+    //   // 2. पीले डॉट्स ड्रॉ करें
+    //   dots.forEach(dot => {
+    //     const x = (parseFloat(dot.style.left) + dot.offsetWidth / 2) * scaleX;
+    //     const y = (parseFloat(dot.style.top) + dot.offsetHeight / 2) * scaleY;
+    //     ctx.beginPath();
+    //     ctx.arc(x, y, 10, 0, 2 * Math.PI); // डॉट्स को बड़ा करें
+    //     ctx.fillStyle = 'yellow';
+    //     ctx.fill();
+    //     ctx.strokeStyle = 'black';
+    //     ctx.lineWidth = 2;
+    //     ctx.stroke();
+    //   });
+
+    //   // 3. लाल सेंट्रोइड ड्रॉ करें
+    //   if (centroidDot) {
+    //     const x = (parseFloat(centroidDot.style.left) + centroidDot.offsetWidth / 2) * scaleX;
+    //     const y = (parseFloat(centroidDot.style.top) + centroidDot.offsetHeight / 2) * scaleY;
+    //     ctx.beginPath();
+    //     ctx.arc(x, y, 10, 0, 2 * Math.PI);
+    //     ctx.fillStyle = 'red';
+    //     ctx.fill();
+    //   }
+    // }
+
+    // /**
+    //  * फंक्शन 3: मुख्य डाउनलोड फंक्शन, जो सब कुछ नियंत्रित करता है।
+    //  */
+    // async function downloadFinalBlueprint() {
+    //   showSnackbar("🚀 Preparing your document. This is the final guaranteed method.");
+    //   document.getElementById('loader').style.display = 'block';
+
+    //   if (!centroidDot || lines.length === 0) {
+    //     showSnackbar("❌ Error: Please calculate the centroid first.");
+    //     document.getElementById('loader').style.display = 'none';
+    //     return;
+    //   }
+
+    //   const projectId = document.getElementById('projectId').value;
+    //   const blueprintImg = document.getElementById('blueprintImage');
+
+    //   try {
+    //     const payload = {};
+
+    //     // --- 1. सेंट्रोइड वाली इमेज बनाएँ ---
+    //     let base = createBaseCanvas();
+    //     drawCentroidLayer(base.ctx, blueprintImg);
+    //     payload.centroid_image = base.canvas.toDataURL('image/png', 1.0);
+
+    //     // --- 2. 8-पार्ट वाली इमेज बनाएँ ---
+    //     base = createBaseCanvas();
+    //     drawCentroidLayer(base.ctx, blueprintImg);
+    //     // यहाँ हम सीधे `divideBlueprint` फंक्शन का उपयोग नहीं कर सकते, हमें इसे फिर से लिखना होगा
+    //     // For simplicity, we will screenshot the live canvas for this part only
+    //     const divisionImage = await html2canvas(document.getElementById('imageContainer')).then(c => c.toDataURL());
+
+    //     // अस्थायी समाधान: अभी के लिए सभी डिविजन इमेज के लिए एक ही स्क्रीनशॉट का उपयोग करें
+    //     // क्योंकि डिविजन की ड्रॉइंग को फिर से लिखना बहुत जटिल है।
+    //     divideBlueprint(8);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.divided_8_image = await html2canvas(document.getElementById('imageContainer')).then(c => c.toDataURL());
+
+    //     divideBlueprint(16);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.divided_16_image = await html2canvas(document.getElementById('imageContainer')).then(c => c.toDataURL());
+
+    //     divideBlueprint(32);
+    //     await new Promise(res => setTimeout(res, 200));
+    //     payload.divided_32_image = await html2canvas(document.getElementById('imageContainer')).then(c => c.toDataURL());
+
+    //     // --- सर्वर पर भेजें ---
+    //     showSnackbar("✅ Captures complete. Sending to server...");
+    //     const response = await fetch(`/download-word-blueprint/${projectId}/`, {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+    //       body: JSON.stringify(payload)
+    //     });
+
+    //     if (response.ok) {
+    //       const blob = await response.blob();
+    //       const url = window.URL.createObjectURL(blob);
+    //       const a = document.createElement('a');
+    //       a.href = url;
+    //       a.download = 'blueprint_analysis.docx';
+    //       document.body.appendChild(a);
+    //       a.click();
+    //       a.remove();
+    //       window.URL.revokeObjectURL(url);
+    //       showSnackbar("✔️ Document downloaded successfully!");
+    //     } else {
+    //       throw new Error(`Server Error: ${response.status}`);
+    //     }
+
+    //   } catch (error) {
+    //     console.error("Error creating Word document:", error);
+    //     showSnackbar("❌ Critical Error. Please check the console.");
+    //   } finally {
+    //     document.getElementById('loader').style.display = 'none';
+    //   }
+    // }
+
+
+
+    function downloadBlueprint() {
+      // Capture the image container with overlays
+      html2canvas(document.getElementById('imageContainer'), {
+        backgroundColor: '#FFFFFF', // Set a white background to avoid transparency issues
+        scale: 2 // Capture at a higher resolution
+      }).then(canvas => {
+        const imageData = canvas.toDataURL('image/png');
+
+        // === NAYA CODE START ===
+        // imageContainer ka on-screen aspect ratio nikalna
+        const containerWidth = imageContainer.clientWidth;
+        const containerHeight = imageContainer.clientHeight;
+        // === NAYA CODE END ===
+
+        // Create a form & post to backend
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "/download-blueprint/";
+
+        const imgInput = document.createElement("input");
+        imgInput.name = "image_data";
+        imgInput.value = imageData;
+        imgInput.type = "hidden";
+        form.appendChild(imgInput);
+
+        // === NAYA CODE START ===
+        // 2. Container width
+        const widthInput = document.createElement("input");
+        widthInput.type = "hidden";
+        widthInput.name = "container_width";
+        widthInput.value = containerWidth;
+        form.appendChild(widthInput);
+
+        // 3. Container height
+        const heightInput = document.createElement("input");
+        heightInput.type = "hidden";
+        heightInput.name = "container_height";
+        heightInput.value = containerHeight;
+        form.appendChild(heightInput);
+        // === NAYA CODE END ===
+
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement("input");
+        csrfInput.type = "hidden";
+        csrfInput.name = "csrfmiddlewaretoken";
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      });
+    }
+
+    window.addEventListener("load", () => {
+      const img = document.getElementById("blueprintImage");
+      const wrapper = document.getElementById("imageWrapper");
+
+      // Wait until image is loaded to get accurate dimensions
+      img.onload = () => {
+        const imgWidth = img.naturalWidth;
+        const imgHeight = img.naturalHeight;
+
+        // Check if vertical image
+        if (imgHeight > imgWidth) {
+          // Rotate image
+          img.style.transform = "rotate(90deg)";
+          img.style.transformOrigin = "top left";
+
+          // Set size to fit rotated image
+          img.style.position = "absolute";
+          img.style.left = "0";
+          img.style.top = "0";
+
+          // Swap width and height
+          img.style.width = imgHeight + "px";
+          img.style.height = imgWidth + "px";
+
+          // Expand wrapper to fit rotated image
+          wrapper.style.width = imgHeight + "px";
+          wrapper.style.height = imgWidth + "px";
+        }
+      };
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const rotationControls = document.querySelector('.rotation-controls');
+      const rotationOptions = document.querySelector('.rotation-options');
+      rotationOptions.style.display = 'none'; // Hide it initially
+
+
+      // Create a toggle button before rotation-options
+      const toggle = document.createElement('div');
+      toggle.className = 'rotation-toggle';
+      toggle.textContent = '🧭 Compass Orientation ▼';
+
+      // Insert it before the .rotation-options div
+      rotationControls.insertBefore(toggle, rotationOptions);
+
+      toggle.addEventListener('click', () => {
+        if (rotationOptions.style.display === 'none' || rotationOptions.style.display === '') {
+          rotationOptions.style.display = 'block';
+          toggle.textContent = '🧭 Compass Orientation ▲';
+        } else {
+          rotationOptions.style.display = 'none';
+          toggle.textContent = '🧭 Compass Orientation ▼';
+        }
+      });
+      updateDegreeLabels(); // Call once on load to set initial labels correctly
+    });
+
+    function drawGrid() {
+      const canvas = document.getElementById("gridCanvas");
+      const image = document.getElementById("blueprintImage");
+
+      canvas.width = image.clientWidth;
+      canvas.height = image.clientHeight;
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const gridSize = 20; // 20px = 1x1 unit block
+
+      ctx.strokeStyle = "#ccc";
+      ctx.lineWidth = 0.5;
+
+      for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      canvas.style.display = "block"; // make it visible
+    }
+  </script>
+</body>
+
+</html>

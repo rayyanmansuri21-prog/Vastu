@@ -1,0 +1,612 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vastu Functional Board</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+
+<body>
+    <div class="main-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div>
+                <center>
+                    <h2 class="sidebar-title">Vastu Functional Board</h2>
+                    <p class="tagline">🏡 Harmonizing Spaces, Empowering Connections</p>
+                </center>
+                <div class="button-panel">
+                    <div class="button-row">
+                        <button onclick="document.getElementById('blueprintModal').style.display='block'">📤 Insert
+                            Blueprint</button>
+                        <button>📐 Create Layout</button>
+                    </div>
+                    <div class="button-row">
+                        <button>💡 Knowledge</button>
+                        <button>📊 Application Insights</button>
+                    </div>
+                </div>
+
+                <div class="recent-projects">
+                    <h4>Recent Projects</h4>
+                    {% if recent_projects %}
+                    <ul class="project-list">
+                        {% for project in recent_projects %}
+                        <li class="project-item {% if limit_reached %}disabled-project{% endif %}" {% if not
+                            limit_reached %} onclick="location.href='{% url 'blueprint_workspace' project.id %}'" {%
+                            endif %}>
+                            <div class="project-info">
+                                <strong>{{ project.name }}</strong><br>
+                                <small>{{ project.description|truncatechars:80 }}</small>
+                            </div>
+
+                            {% if limit_reached %}
+                            <div class="tooltip-msg">
+                                ⚠️ You can't access this project after exceeding your creation limit
+                            </div>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+
+
+                    </ul>
+                    {% else %}
+                    <div class="no-project-box">
+                        <p>No recently opened projects found.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+
+            </div>
+            <div class="footer-info">
+                <p>📩 Subscription & Contact Info</p>
+            </div>
+        </div>
+
+
+
+        <!-- Right Content -->
+        <div class="content">
+            <!-- 👇 Heading + Logout in single horizontal row -->
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 30px;">
+                <h2 style="margin: 0 auto; font-weight: bold;">
+                    Welcome to the floor map analyzer tool GUI by Cosmo Vastu
+                </h2>
+
+                <!-- Logout Button Trigger -->
+                <button onclick="confirmLogout()" class="logout-btn">
+                    🔒 Logout
+                </button>
+
+
+                <!-- Hidden Logout Form -->
+                <form id="logoutForm" method="POST" action="{% url 'logout' %}" style="display: none;">
+                    {% csrf_token %}
+                </form>
+
+                <!-- User Profile Section -->
+                <!-- Profile Avatar Only -->
+                <div class="profile-avatar clickable" onclick="openProfileDialog()">
+                    {{ user_profile.username|slice:":1"|upper }}
+                </div>
+
+                <!-- Profile Dialog -->
+                <div id="profileDialog" class="profile-dialog">
+                    <div class="profile-dialog-content">
+                        <span class="close-btn" onclick="closeProfileDialog()">&times;</span>
+
+                        <div class="profile-header">
+                            <div class="profile-avatar">
+                                {{ user_profile.username|slice:":1"|upper }}
+                            </div>
+                            <div class="profile-info">
+                                <h3>{{ user_profile.username }}</h3>
+                                <p>{{ user_profile.email }}</p>
+                            </div>
+                        </div>
+
+                        <div class="profile-stats">
+                            <div class="stat-box">
+                                <div class="stat-value">{{ project_count }}</div>
+                                <div class="stat-label">Projects Created</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">{{ project_limit }}</div>
+                                <div class="stat-label">Project Limit</div>
+                            </div>
+                        </div>
+
+                        <h3>Your Projects</h3>
+                        <div class="project-cards">
+                            {% for project in all_projects %}
+                            <div class="project-card"
+                                onclick="location.href='{% url 'blueprint_workspace' project.id %}'">
+                                <h4>{{ project.name }}</h4>
+                                <p>{{ project.description|truncatechars:100 }}</p>
+                                <div class="project-meta">
+                                    <span class="project-tag tag-status">{{ project.status }}</span>
+                                    <span class="project-tag tag-category">{{ project.category }}</span>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p>No projects created yet. Click on "Insert Blueprint" to create your first project.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            <img src="{% static 'images/dashboardlogo.jpg' %}" alt="Vastu Grid" class="vastu-image">
+        </div>
+    </div>
+    <!-- blueprint_modal.html -->
+    {% load static %}
+    <div id="blueprintModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <div class="radio-group">
+                    <input type="radio" id="createNew" name="projectType" value="create" checked>
+                    <label for="createNew">Create New Project</label>
+                    <input type="radio" id="openExisting" name="projectType" value="open">
+                    <label for="openExisting">Open Existing Project</label>
+                </div>
+            </div>
+
+            <!-- Create New Project Section -->
+            <form method="POST" action="{% url 'create_project' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div id="createSection" class="modal-section">
+                    <div class="split-container">
+                        <div class="preview-section">
+                            <h3>Blueprint Preview</h3>
+                            <img id="previewImage" src="{% static 'images/vastulogo.png' %}" alt="Blueprint Preview"
+                                class="preview-image" style="max-width: 100%; height: auto;">
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label>Project Name:</label>
+                                <input type="text" name="projectName" id="projectName" placeholder="Enter project name"
+                                    oninput="checkFormCompletion()">
+                            </div>
+                            <div class="form-group">
+                                <label>Description:</label>
+                                <textarea name="description" id="description" placeholder="Enter project description"
+                                    oninput="checkFormCompletion()"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Status:</label>
+                                <select name="status" id="status" onchange="checkFormCompletion()">
+                                    <option value="">-- Select Status --</option>
+                                    <option value="Planned">Planned</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Category:</label>
+                                <select name="category" id="category" onchange="checkFormCompletion()">
+                                    <option value="">-- Select Category --</option>
+                                    <option value="Residential">Residential</option>
+                                    <option value="Commercial">Commercial</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <input type="file" name="blueprint" id="blueprintFile" accept="image/*"
+                                    style="display: none" onchange="handleFileUpload()">
+                                <button class="btn-blue" type="button"
+                                    onclick="document.getElementById('blueprintFile').click()">Upload Blueprint</button>
+                                <p class="success-text" id="uploadStatus" style="display: none">✓ Blueprint uploaded</p>
+                                <p class="error-text" id="errorStatus">⚠ No blueprint uploaded</p>
+                            </div>
+                            <button id="createProjectBtn" type="submit" class="btn-green" disabled>Create
+                                Project</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+
+            <!-- Open Existing Project Section -->
+            <div id="openSection" class="modal-section" style="display: none;">
+                <div class="existing-projects">
+                    <div class="search-bar">
+                        <div class="search-field">
+                            <label>Search:</label>
+                            <input type="text" id="projectSearch" placeholder="Search projects by name...">
+                        </div>
+                        <div class="filter-field">
+                            <label>Status:</label>
+                            <select id="statusFilter">
+                                <option value="">All</option>
+                                <option value="Planned">Planned</option>
+                                <option value="In Progress">In Progress</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label>Category:</label>
+                            <select id="categoryFilter">
+                                <option value="">All</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial">Commercial</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label>Sort:</label>
+                            <select id="sortFilter">
+                                <option value="date_new">Date (Newest)</option>
+                                <option value="date_old">Date (Oldest)</option>
+                                <option value="name_asc">Name (A-Z)</option>
+                                <option value="name_desc">Name (Z-A)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn-blue" id="refreshBtn">Refresh List</button>
+                        <button class="btn-white" id="clearFiltersBtn">Clear Filters</button>
+                        <button class="btn-red" id="deleteSelectedBtn">Delete Selected</button>
+                    </div>
+
+                    <div id="existingProjectsListContainer" class="project-cards-container">
+                        <!-- Loading indicator -->
+                        <p id="loadingText">Loading projects...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openProfileDialog() {
+            document.getElementById("profileDialog").style.display = "flex";
+        }
+        function closeProfileDialog() {
+            document.getElementById("profileDialog").style.display = "none";
+        }
+        let imageUploaded = false;
+        document.querySelectorAll('input[name="projectType"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                document.getElementById('createSection').style.display =
+                    this.value === 'create' ? 'block' : 'none';
+                document.getElementById('openSection').style.display =
+                    this.value === 'open' ? 'block' : 'none';
+            });
+        });
+
+        function closeModal() {
+            document.getElementById('blueprintModal').style.display = 'none';
+        }
+
+        // Open modal
+        document.querySelector('.btn-insert').addEventListener('click', function () {
+            document.getElementById('blueprintModal').style.display = 'block';
+        });
+
+        document.getElementById('blueprintFile').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Preview the image
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const previewImage = document.querySelector('.preview-image');
+                    previewImage.src = event.target.result;
+                    previewImage.style.width = '100%';
+                    previewImage.style.height = 'auto';
+
+                    // Update status messages
+                    document.getElementById('errorStatus').style.display = 'none';
+                    document.getElementById('uploadStatus').style.display = 'block';
+
+                    // Enable create project button
+                    document.querySelector('.btn-create').disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function handleFileUpload() {
+            const fileInput = document.getElementById('blueprintFile');
+            const file = fileInput.files[0];
+
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    document.getElementById('previewImage').src = e.target.result;
+                    document.getElementById('uploadStatus').style.display = 'block';
+                    document.getElementById('errorStatus').style.display = 'none';
+                    imageUploaded = true;
+                    checkFormCompletion();
+                };
+
+                reader.readAsDataURL(file);
+            } else {
+                imageUploaded = false;
+                document.getElementById('uploadStatus').style.display = 'none';
+                document.getElementById('errorStatus').style.display = 'block';
+                checkFormCompletion();
+            }
+        }
+
+        function checkFormCompletion() {
+            const name = document.getElementById('projectName').value.trim();
+            const desc = document.getElementById('description').value.trim();
+            const status = document.getElementById('status').value;
+            const category = document.getElementById('category').value;
+
+            const allFilled = name && desc && status && category && imageUploaded;
+            document.getElementById('createProjectBtn').disabled = !allFilled;
+        }
+        function createProject() {
+            const formData = new FormData();
+            formData.append('projectName', document.getElementById('projectName').value);
+            formData.append('projectDesc', document.getElementById('projectDesc').value);
+            formData.append('projectStatus', document.getElementById('projectStatus').value);
+            formData.append('projectCategory', document.getElementById('projectCategory').value);
+            formData.append('blueprintFile', document.getElementById('blueprintFile').files[0]);
+
+            fetch('/create-project/', {  // Update this URL to match your urls.py
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update main content image
+                        const mainContent = document.querySelector('.content');
+                        mainContent.innerHTML = `
+                <h2>Project: ${document.getElementById('projectName').value}</h2>
+                <img src="${uploadedImageData}" alt="Blueprint" class="vastu-image">
+            `;
+                        closeModal();
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to create project'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error creating project');
+                });
+        }
+
+        // Add this function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        function showSnackbar(text) {
+            const bar = document.getElementById("snackbar");
+            bar.textContent = text;
+            bar.style.visibility = "visible";
+            bar.style.opacity = "1";
+
+            // 4
+            setTimeout(() => {
+                bar.style.opacity = "0";
+                bar.style.visibility = "hidden";
+            }, 4000);
+        }
+
+    </script>
+
+    {% if messages %}
+    {% for m in messages %}
+    <div class="django-msg" data-text="{{ m|escapejs }}"></div>
+    {% endfor %}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll('.django-msg').forEach(el => {
+                alert(el.dataset.text);
+                el.remove();
+            });
+        });
+    </script>
+    {% endif %}
+
+    <script>
+        function confirmLogout() {
+            // ➊ overlay container 
+            const overlay = document.createElement("div");
+            overlay.id = "logoutOverlay";
+            overlay.style.cssText = `
+                position: fixed; inset: 0;                 /* पूरे viewport पर */
+                background: rgba(0,0,0,.45);
+                display: flex; justify-content: center; align-items: center;
+                z-index: 9999;
+            `;
+
+            // ➋ dialog box
+            const dialogBox = document.createElement("div");
+            dialogBox.innerHTML = `
+                <h3 style="margin:0 0 10px;color:#4A00E0;">Confirm Logout</h3>
+                <p style="font-size:14px;margin:0 0 20px;">Are you sure you want to logout?</p>
+                <button id="logoutYes" style="
+                    background:#4A00E0;color:#fff;border:0;border-radius:5px;
+                    padding:8px 16px;margin-right:10px;cursor:pointer;">Yes</button>
+                <button id="logoutNo" style="
+                    background:#ccc;border:0;border-radius:5px;
+                    padding:8px 16px;cursor:pointer;">No</button>
+            `;
+            dialogBox.style.cssText = `
+                background:#fff;padding:24px 28px;border-radius:10px;
+                box-shadow:0 5px 18px rgba(0,0,0,.3);text-align:center;
+                max-width:300px;
+            `;
+
+            overlay.appendChild(dialogBox);
+            document.body.appendChild(overlay);
+
+
+            document.getElementById("logoutYes").onclick = () => {
+                document.getElementById("logoutForm").submit();
+            };
+
+
+            document.getElementById("logoutNo").onclick = () => {
+                overlay.remove();
+            };
+        }
+
+        //open existing project tab js code--------------------------------------
+        function debounce(func, delay) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const projectSearch = document.getElementById('projectSearch');
+            const statusFilter = document.getElementById('statusFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const sortFilter = document.getElementById('sortFilter');
+            const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+            // load projects again whenever filters are changed
+            projectSearch.addEventListener('input', debounce(fetchProjects, 400));
+            statusFilter.addEventListener('change', fetchProjects);
+            categoryFilter.addEventListener('change', fetchProjects);
+            sortFilter.addEventListener('change', fetchProjects);
+
+            // events for buttons
+            clearFiltersBtn.addEventListener('click', () => {
+                projectSearch.value = '';
+                statusFilter.value = '';
+                categoryFilter.value = '';
+                sortFilter.value = 'date_new';
+                fetchProjects();
+            });
+            refreshBtn.addEventListener('click', fetchProjects);
+            deleteSelectedBtn.addEventListener('click', deleteSelectedProjects);
+
+            //first time load projects
+            document.querySelector('input[name="projectType"][value="open"]').addEventListener('change', function () {
+                if (this.checked) {
+                    fetchProjects();
+                }
+            });
+        });
+
+        async function fetchProjects() {
+            const container = document.getElementById('existingProjectsListContainer');
+            container.innerHTML = '<p id="loadingText">Loading projects...</p>';
+            const loadingText = document.getElementById('loadingText');
+            // container.innerHTML = ''; // remove old list
+            // loadingText.style.display = 'block'; // show loading msg
+
+            const search = document.getElementById('projectSearch').value;
+            const status = document.getElementById('statusFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const sort = document.getElementById('sortFilter').value;
+
+            const url = new URL('/ajax/load-projects/', window.location.origin);
+            url.searchParams.append('search', search);
+            url.searchParams.append('status', status);
+            url.searchParams.append('category', category);
+            url.searchParams.append('sort', sort);
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                container.innerHTML = ''; // hide loading msg
+
+                if (data.projects && data.projects.length > 0) {
+                    data.projects.forEach(project => {
+                        const projectCard = document.createElement('div');
+                        projectCard.className = 'project-card';
+                        projectCard.innerHTML = `
+                    <div class="project-card-header">
+                        <input type="checkbox" class="project-checkbox" data-project-id="${project.id}">
+                        <h4>${project.name}</h4>
+                    </div>
+                    <p>${project.description.substring(0, 100)}...</p>
+                    <div class="project-meta">
+                        <span class="project-tag tag-status">${project.status}</span>
+                        <span class="project-tag tag-category">${project.category}</span>
+                    </div>
+                `;
+                        const checkbox = projectCard.querySelector('.project-checkbox');
+                        checkbox.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                        });
+
+                        projectCard.addEventListener('click', () => {
+                            window.location.href = `/blueprint/${project.id}/`;
+                        });
+                        container.appendChild(projectCard);
+                    });
+                } else {
+                    container.innerHTML = '<p class="no-match">No projects found matching your criteria.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching projects:', error);
+                container.innerHTML = '<p class="error-text">⚠️ Could not load projects. Please check the console for errors and try again.</p>';
+            }
+        }
+
+        async function deleteSelectedProjects() {
+            const selectedCheckboxes = document.querySelectorAll('.project-checkbox:checked');
+            const projectIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.projectId);
+
+            if (projectIds.length === 0) {
+                alert('Please select projects to delete.');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete ${projectIds.length} project(s)? This action cannot be undone.`)) {
+                try {
+                    const response = await fetch('/ajax/delete-projects/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken') // getCookie function
+                        },
+                        body: JSON.stringify({ project_ids: projectIds })
+                    });
+
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        fetchProjects(); // refresh projects list
+                    } else {
+                        alert('Error: ' + (data.message || 'Could not delete projects.'));
+                    }
+                } catch (error) {
+                    console.error('Error deleting projects:', error);
+                    alert('An error occurred while trying to delete projects.');
+                }
+            }
+        }
+    </script>
+
+
+
+
+</body>
+
+</html>
