@@ -10,12 +10,20 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+# settings.py
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -56,7 +64,7 @@ ROOT_URLCONF = "vastu_app.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR,'templates')],
+        "DIRS": [BASE_DIR,'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -143,4 +151,4 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'gohelhetvi18@gmail.com'          # your Gmail
 EMAIL_HOST_PASSWORD = 'jzpc cnrr vtdz ycdy'         # App Password (not your Gmail password)
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB\

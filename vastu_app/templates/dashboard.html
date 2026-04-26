@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <title>Vastu Functional Board</title>
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 
 <body>
@@ -21,12 +22,17 @@
                 <div class="button-panel">
                     <div class="button-row">
                         <button onclick="document.getElementById('blueprintModal').style.display='block'">📤 Insert
-                            Blueprint</button>
-                        <button>📐 Create Layout</button>
+                            Blueprint
+                        </button>
+                            <button onclick="window.location.href='{% url 'create_layout' %}'">
+                                🏠 Create Layout
+                            </button>
                     </div>
                     <div class="button-row">
-                        <button>💡 Knowledge</button>
-                        <button>📊 Application Insights</button>
+                        <button id="knowledge-btn">💡 Knowledge</button>
+                        <button onclick="window.location.href='{% url 'application_insights' %}'">
+                            📊 Application Insights
+                        </button>
                     </div>
                 </div>
 
@@ -63,10 +69,150 @@
 
             </div>
             <div class="footer-info">
-                <p>📩 Subscription & Contact Info</p>
+                <button onclick="openPremiumModal()" style="
+                    padding: 10px 22px;
+                    background: linear-gradient(135deg, #d4af37, #f5cc50);
+                    color: #3d2c00;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    box-shadow: 0 2px 10px rgba(212,175,55,0.35);
+                ">
+                    ✦ Upgrade to Premium
+                </button>
+                <!-- PREMIUM MODAL -->
+                <div id="premiumModal" style="
+                    display:none; position:fixed; inset:0;
+                    background:rgba(10,20,10,0.7);
+                    z-index:99999;
+                    align-items:center; justify-content:center;
+                    backdrop-filter: blur(4px);
+                ">
+                <div style="
+                    background:#fff;
+                    border-radius:16px;
+                    width:100%; max-width:480px;
+                    padding:32px 28px;
+                    position:relative;
+                    box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+                    font-family: 'Lato', sans-serif;
+                ">
+                    <!-- Close -->
+                    <button onclick="closePremiumModal()" style="
+                        position:absolute; top:14px; right:16px;
+                        background:none; border:none; font-size:22px;
+                        cursor:pointer; color:#94a3b8;
+                    ">&times;</button>
+
+                    <!-- Header -->
+                    <div style="text-align:center; margin-bottom:24px;">
+                        <div style="font-size:28px; margin-bottom:6px;">✦</div>
+                        <h2 style="font-family:'Cinzel',serif; font-size:20px; color:#0f1f0e; margin:0 0 6px;">
+                            Cosmo Vastu Premium
+                        </h2>
+                        <p style="color:#5a7a55; font-size:13px; margin:0;">
+                            Expand your project limit with a one-time payment
+                        </p>
+                    </div>
+
+                    <!-- Current usage -->
+                    <div id="usageBar" style="
+                        background:#f0f7eb; border:1px solid #d4e4cc;
+                        border-radius:8px; padding:10px 14px;
+                        font-size:12.5px; color:#3d6b35;
+                        margin-bottom:20px; text-align:center;
+                    ">
+                        Loading your usage...
+                    </div>
+
+                    <!-- Plans -->
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:24px;">
+
+                        <!-- Plan 1 -->
+                        <div class="plan-card" onclick="selectPlan('basic', this)" data-plan="basic" style="
+                            border:2px solid #e2e8f0; border-radius:10px;
+                            padding:14px 16px; cursor:pointer; transition:all 0.2s;
+                            display:flex; align-items:center; justify-content:space-between;
+                        ">
+                            <div>
+                                <div style="font-weight:700; font-size:14px; color:#1a2e19;">+1 Project Slot</div>
+                                <div style="font-size:12px; color:#5a7a55; margin-top:2px;">One-time · Never expires</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:20px; font-weight:800; color:#0f1f0e;">₹49</div>
+                                <div style="font-size:10px; color:#94a3b8;">one time</div>
+                            </div>
+                        </div>
+
+                        <!-- Plan 2 -->
+                        <div class="plan-card" onclick="selectPlan('standard', this)" data-plan="standard" style="
+                            border:2px solid #e2e8f0; border-radius:10px;
+                            padding:14px 16px; cursor:pointer; transition:all 0.2s;
+                            display:flex; align-items:center; justify-content:space-between;
+                            position:relative;
+                        ">
+                            <div style="
+                                position:absolute; top:-10px; left:14px;
+                                background:#166534; color:#fff;
+                                font-size:10px; font-weight:700;
+                                padding:2px 10px; border-radius:20px; letter-spacing:0.5px;
+                            ">POPULAR</div>
+                            <div>
+                                <div style="font-weight:700; font-size:14px; color:#1a2e19;">+2 Project Slots</div>
+                                <div style="font-size:12px; color:#5a7a55; margin-top:2px;">One-time · Never expires</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:20px; font-weight:800; color:#0f1f0e;">₹299</div>
+                                <div style="font-size:10px; color:#94a3b8;">one time</div>
+                            </div>
+                        </div>
+
+                        <!-- Plan 3 -->
+                        <div class="plan-card" onclick="selectPlan('premium', this)" data-plan="premium" style="
+                            border:2px solid #e2e8f0; border-radius:10px;
+                            padding:14px 16px; cursor:pointer; transition:all 0.2s;
+                            display:flex; align-items:center; justify-content:space-between;
+                        ">
+                            <div>
+                                <div style="font-weight:700; font-size:14px; color:#1a2e19;">+7 Project Slots</div>
+                                <div style="font-size:12px; color:#5a7a55; margin-top:2px;">Best value · Never expires</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:20px; font-weight:800; color:#0f1f0e;">₹499</div>
+                                <div style="font-size:10px; color:#94a3b8;">one time</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pay button -->
+                    <button id="payBtn" onclick="initiatePayment()" disabled style="
+                        width:100%; padding:13px;
+                        background: linear-gradient(135deg, #166534, #16a34a);
+                        color:#fff; border:none; border-radius:10px;
+                        font-size:15px; font-weight:700; cursor:pointer;
+                        opacity:0.5; transition:all 0.2s;
+                        font-family:'Lato',sans-serif;
+                    ">
+                        Select a plan to continue
+                    </button>
+
+                    <p style="text-align:center; font-size:11px; color:#94a3b8; margin-top:12px; margin-bottom:0;">
+                        🔒 Secured by Razorpay · UPI, Cards, NetBanking accepted
+                    </p>
+                </div>
+                </div>
+
+                <style>
+                .plan-card:hover { border-color: #4ade80 !important; background: #f0fdf4; }
+                .plan-card.selected { border-color: #166534 !important; background: #f0fdf4; }
+                </style>
             </div>
         </div>
-
 
 
         <!-- Right Content -->
@@ -201,12 +347,14 @@
                                 <input type="file" name="blueprint" id="blueprintFile" accept="image/*"
                                     style="display: none" onchange="handleFileUpload()">
                                 <button class="btn-blue" type="button"
-                                    onclick="document.getElementById('blueprintFile').click()">Upload Blueprint</button>
+                                    onclick="document.getElementById('blueprintFile').click()">Upload Blueprint
+                                </button>
                                 <p class="success-text" id="uploadStatus" style="display: none">✓ Blueprint uploaded</p>
                                 <p class="error-text" id="errorStatus">⚠ No blueprint uploaded</p>
                             </div>
                             <button id="createProjectBtn" type="submit" class="btn-green" disabled>Create
-                                Project</button>
+                                Project
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -264,6 +412,13 @@
     </div>
 
     <script>
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const knowledgeBtn = document.getElementById('knowledge-btn');
+            knowledgeBtn.addEventListener('click', () => {
+                window.location.href = "{% url 'knowledge' %}";
+            });
+        });
         function openProfileDialog() {
             document.getElementById("profileDialog").style.display = "flex";
         }
@@ -365,9 +520,9 @@
                         // Update main content image
                         const mainContent = document.querySelector('.content');
                         mainContent.innerHTML = `
-                <h2>Project: ${document.getElementById('projectName').value}</h2>
-                <img src="${uploadedImageData}" alt="Blueprint" class="vastu-image">
-            `;
+            <h2>Project: ${document.getElementById('projectName').value}</h2>
+            <img src="${uploadedImageData}" alt="Blueprint" class="vastu-image">
+        `;
                         closeModal();
                     } else {
                         alert('Error: ' + (data.error || 'Failed to create project'));
@@ -426,33 +581,33 @@
 
     <script>
         function confirmLogout() {
-            // ➊ overlay container 
+            // ➊ overlay container
             const overlay = document.createElement("div");
             overlay.id = "logoutOverlay";
             overlay.style.cssText = `
-                position: fixed; inset: 0;                 /* पूरे viewport पर */
-                background: rgba(0,0,0,.45);
-                display: flex; justify-content: center; align-items: center;
-                z-index: 9999;
-            `;
+            position: fixed; inset: 0;                 /* पूरे viewport पर */
+            background: rgba(0,0,0,.45);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999;
+        `;
 
             // ➋ dialog box
             const dialogBox = document.createElement("div");
             dialogBox.innerHTML = `
-                <h3 style="margin:0 0 10px;color:#4A00E0;">Confirm Logout</h3>
-                <p style="font-size:14px;margin:0 0 20px;">Are you sure you want to logout?</p>
-                <button id="logoutYes" style="
-                    background:#4A00E0;color:#fff;border:0;border-radius:5px;
-                    padding:8px 16px;margin-right:10px;cursor:pointer;">Yes</button>
-                <button id="logoutNo" style="
-                    background:#ccc;border:0;border-radius:5px;
-                    padding:8px 16px;cursor:pointer;">No</button>
-            `;
+            <h3 style="margin:0 0 10px;color:#4A00E0;">Confirm Logout</h3>
+            <p style="font-size:14px;margin:0 0 20px;">Are you sure you want to logout?</p>
+            <button id="logoutYes" style="
+                background:#4A00E0;color:#fff;border:0;border-radius:5px;
+                padding:8px 16px;margin-right:10px;cursor:pointer;">Yes</button>
+            <button id="logoutNo" style="
+                background:#ccc;border:0;border-radius:5px;
+                padding:8px 16px;cursor:pointer;">No</button>
+        `;
             dialogBox.style.cssText = `
-                background:#fff;padding:24px 28px;border-radius:10px;
-                box-shadow:0 5px 18px rgba(0,0,0,.3);text-align:center;
-                max-width:300px;
-            `;
+            background:#fff;padding:24px 28px;border-radius:10px;
+            box-shadow:0 5px 18px rgba(0,0,0,.3);text-align:center;
+            max-width:300px;
+        `;
 
             overlay.appendChild(dialogBox);
             document.body.appendChild(overlay);
@@ -540,16 +695,16 @@
                         const projectCard = document.createElement('div');
                         projectCard.className = 'project-card';
                         projectCard.innerHTML = `
-                    <div class="project-card-header">
-                        <input type="checkbox" class="project-checkbox" data-project-id="${project.id}">
-                        <h4>${project.name}</h4>
-                    </div>
-                    <p>${project.description.substring(0, 100)}...</p>
-                    <div class="project-meta">
-                        <span class="project-tag tag-status">${project.status}</span>
-                        <span class="project-tag tag-category">${project.category}</span>
-                    </div>
-                `;
+                <div class="project-card-header">
+                    <input type="checkbox" class="project-checkbox" data-project-id="${project.id}">
+                    <h4>${project.name}</h4>
+                </div>
+                <p>${project.description.substring(0, 100)}...</p>
+                <div class="project-meta">
+                    <span class="project-tag tag-status">${project.status}</span>
+                    <span class="project-tag tag-category">${project.category}</span>
+                </div>
+            `;
                         const checkbox = projectCard.querySelector('.project-checkbox');
                         checkbox.addEventListener('click', (event) => {
                             event.stopPropagation();
@@ -603,10 +758,218 @@
             }
         }
     </script>
+    {% load static %}
+    <!-- Floating action button for chatbot -->
+    <button id="chat-toggle-btn" class="chat-fab">💬</button>
+
+    <div id="chat-modal" class="chat-modal" style="display: none;">
+        <div class="chat-header">
+            <span>Disha AI</span>
+            <button id="close-chat">&times;</button>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+            <div id="chat-welcome">
+                <h3 class="welcome-title">Namaste 🙏 I am Disha AI</h3>
+                <p class="welcome-sub">Ask me anything about Vastu</p>
+                <div class="suggestions">
+                    <button class="suggestion-btn" data-prompt="Tell me Vastu tips for home entrance">
+                        🏠 Home Entrance Tips
+                    </button>
+                    <button class="suggestion-btn" data-prompt="Where should kitchen be according to Vastu">
+                        🍳 Kitchen Direction
+                    </button>
+                    <button class="suggestion-btn" data-prompt="How to calculate Brahmasthan of a plot">
+                        📐 Brahmasthan Guide
+                    </button>
+                    <button class="suggestion-btn" data-prompt="Best bedroom direction as per Vastu">
+                        🛏 Bedroom Direction
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="chat-send">➤</button>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="{% static 'css/chatbot.css' %}">
+    <script src="{% static 'js/chatbot.js' %}" defer></script>
 
 
+    <!--<link rel="stylesheet" href="{% static 'css/chatbot.css' %}">-->
+    <!--<script src="{% static 'js/chatbot.js' %}"></script>-->
 
+    <!--<div class="fab" onclick="toggleChat()">💬</div>-->
 
+    <!--<div class="chat-popup" id="chatPopup">-->
+
+    <!--    <div class="chat-header">-->
+    <!--        <span>🧿 Vastu AI</span>-->
+    <!--        <span style="cursor:pointer;" onclick="toggleChat()">✕</span>-->
+    <!--    </div>-->
+
+    <!--    <div class="chat-body" id="chatBody">-->
+    <!--        <div class="msg ai-msg">-->
+    <!--            🙏 Namaste! Ask me any Vastu related question.-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="chat-footer">-->
+    <!--        <div id="chatMessages"></div>-->
+    <!--        <input-->
+    <!--                type="text"-->
+    <!--                id="chatInput"-->
+    <!--                placeholder="Type your message..."-->
+    <!--                onkeydown="if(event.key === 'Enter') sendMessage()"-->
+    <!--        />-->
+    <!--        <button onclick="sendMessage()">➤</button>-->
+    <!--        &lt;!&ndash;        <input type="text" id="chat-input" placeholder="Type a message…"&ndash;&gt;-->
+    <!--        &lt;!&ndash;               onkeydown="if(event.key==='Enter'){sendMessage();}">&ndash;&gt;-->
+    <!--        &lt;!&ndash;        <button id="send-btn" onclick="sendMessage()">➤</button>&ndash;&gt;-->
+    <!--    </div>-->
+    <!--</div>-->
+    <!--<script src="{% static 'js/chatbot.js' %}"></script>-->
+
+<script>
+let selectedPlan = null;
+
+function openPremiumModal() {
+    document.getElementById('premiumModal').style.display = 'flex';
+    loadUsageStatus();
+}
+
+function closePremiumModal() {
+    document.getElementById('premiumModal').style.display = 'none';
+    selectedPlan = null;
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.textContent = 'Select a plan to continue';
+    btn.style.opacity = '0.5';
+}
+
+function selectPlan(plan, el) {
+    selectedPlan = plan;
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    const labels = { basic: '₹49 — +1 Project', standard: '₹299 — +2 Projects', premium: '₹499 — +7 Projects' };
+    const btn = document.getElementById('payBtn');
+    btn.disabled = false;
+    btn.textContent = `Pay ${labels[plan]}`;
+    btn.style.opacity = '1';
+}
+
+async function loadUsageStatus() {
+    try {
+        const res = await fetch('/payment/status/');
+        const data = await res.json();
+        document.getElementById('usageBar').innerHTML =
+            `You have used <b>${data.used}</b> of <b>${data.limit}</b> projects &nbsp;·&nbsp; <b>${data.remaining}</b> remaining`;
+    } catch {
+        document.getElementById('usageBar').textContent = 'Could not load usage info.';
+    }
+}
+
+async function initiatePayment() {
+    if (!selectedPlan) return;
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating order...';
+
+    try {
+        const res = await fetch('/payment/create-order/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ plan: selectedPlan })
+        });
+        const order = await res.json();
+
+        if (order.error) {
+            alert('Error: ' + order.error);
+            btn.disabled = false;
+            btn.textContent = 'Try Again';
+            return;
+        }
+
+        const options = {
+            key: order.key,
+            amount: order.amount,
+            currency: order.currency,
+            name: 'Cosmo Vastu',
+            description: order.plan_label,
+            image: '',  // apna logo URL yahan
+            order_id: order.order_id,
+            handler: async function(response) {
+                // Payment success — verify karo
+                const verifyRes = await fetch('/payment/verify/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        razorpay_order_id:   response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature:  response.razorpay_signature,
+                    })
+                });
+                const result = await verifyRes.json();
+                if (result.success) {
+                    closePremiumModal();
+                    showSuccessToast(result.extra_granted, result.new_limit);
+                } else {
+                    alert('Payment verification failed. Contact support.');
+                }
+            },
+            prefill: {
+                name:  order.user_name,
+                email: order.user_email,
+            },
+            theme: { color: '#166534' },
+            modal: {
+                ondismiss: function() {
+                    btn.disabled = false;
+                    btn.textContent = 'Try Again';
+                    btn.style.opacity = '1';
+                }
+            }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+
+    } catch (err) {
+        alert('Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
+}
+
+function showSuccessToast(granted, newLimit) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+        background:#166534; color:#fff; padding:14px 28px;
+        border-radius:10px; font-size:14px; font-weight:700;
+        z-index:999999; box-shadow:0 4px 20px rgba(0,0,0,0.3);
+        font-family:'Lato',sans-serif;
+    `;
+    toast.textContent = `✓ Payment successful! +${granted} project slots added. New limit: ${newLimit}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+</script>
 </body>
 
 </html>

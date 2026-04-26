@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vastu Knowledge - WP Vastu</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Georgia:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== Reset ===== */
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #fff9f1;
+      color: #3e3e3e;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 50px auto;
+      padding: 20px 30px;
+    }
+
+    /* ===== Header ===== */
+    h1 {
+      font-family: 'Georgia', serif;
+      color: #f2b134;
+      font-size: 3rem;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 20px;
+      letter-spacing: 0.1em;
+    }
+
+    /* ===== Back button ===== */
+    .back-btn {
+      display: inline-block;
+      margin-bottom: 30px;
+      padding: 10px 18px;
+      background: #f2b134;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 25px;
+      font-weight: 600;
+      transition: 0.3s ease;
+    }
+    .back-btn:hover { background: #d18c1f; }
+
+    /* ===== Section Cards ===== */
+    section {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 12px 25px rgba(0,0,0,0.08);
+      margin-bottom: 30px;
+      padding: 30px 35px;
+      transition: all 0.3s ease;
+    }
+    section:hover { box-shadow: 0 20px 45px rgba(0,0,0,0.15); }
+
+    section h2 {
+      font-family: 'Georgia', serif;
+      color: #f2994a;
+      font-size: 1.9rem;
+      margin-bottom: 15px;
+    }
+
+    section p, section ul, section ol {
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+    }
+
+    section ul, section ol { margin-left: 25px; }
+    section li { margin-bottom: 8px; }
+
+    /* ===== TOC ===== */
+    .toc {
+      position: fixed;
+      top: 80px;
+      right: 30px;
+      width: 220px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+    .toc strong { display: block; margin-bottom: 10px; font-size: 1.1rem; color: #f2b134; }
+    .toc a {
+      display: block;
+      color: #f2994a;
+      text-decoration: none;
+      margin-bottom: 8px;
+      transition: 0.3s ease;
+    }
+    .toc a:hover { color: #f2b134; }
+
+    /* ===== Images ===== */
+    .section-img {
+      width: 100%;
+      max-width: 500px;
+      display: block;
+      margin: 15px auto;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      transition: transform 0.3s ease;
+    }
+    .section-img:hover { transform: scale(1.03); }
+
+    /* ===== Responsive ===== */
+    @media screen and (max-width: 900px) {
+      .toc { display: none; }
+      body { padding: 20px 12px; }
+      section { padding: 20px; }
+      h1 { font-size: 2.4rem; }
+      section h2 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+  <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+  <h1>🕉️ Vastu Knowledge</h1>
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <strong>Contents</strong>
+    <a href="#intro">Introduction</a>
+    <a href="#elements">Key Elements</a>
+    <a href="#directions">Direction Guide</a>
+    <a href="#rooms">Room Placements</a>
+    <a href="#tips">Quick Tips</a>
+    <a href="#benefits">Benefits</a>
+  </div>
+
+  <!-- Sections -->
+  <section id="intro">
+    <h2>Introduction to Vastu</h2>
+    <p>Vastu Shastra is the ancient Indian science of architecture and design, harmonizing natural energies to promote health, prosperity, and happiness. It integrates art, astronomy, and environmental balance to create spaces that feel positive and energetic.</p>
+    <img src="https://via.placeholder.com/500x250?text=Vastu+Diagram" alt="Vastu Diagram" class="section-img">
+  </section>
+
+  <section id="elements">
+    <h2>Key Elements of Vastu</h2>
+    <ul>
+      <li><strong>Direction:</strong> Placement based on cardinal directions (North, South, East, West).</li>
+      <li><strong>Five Elements:</strong> Earth, Water, Fire, Air, and Space — each affects life differently.</li>
+      <li><strong>Energy Flow:</strong> Ensuring positive energy circulation throughout the space.</li>
+      <li><strong>Balance:</strong> Proper balance of materials, light, and design for harmony.</li>
+    </ul>
+  </section>
+
+  <section id="directions">
+    <h2>Direction Guide</h2>
+    <p>Vastu assigns certain qualities and purposes to each direction. For example:</p>
+    <ul>
+      <li><strong>North:</strong> Wealth and prosperity</li>
+      <li><strong>East:</strong> Knowledge and education</li>
+      <li><strong>South:</strong> Stability and security</li>
+      <li><strong>West:</strong> Social connections</li>
+    </ul>
+    <img src="https://via.placeholder.com/500x250?text=Directional+Map" alt="Directions Map" class="section-img">
+  </section>
+
+  <section id="rooms">
+    <h2>Room Placements</h2>
+    <ul>
+      <li><strong>Kitchen:</strong> Southeast</li>
+      <li><strong>Master Bedroom:</strong> Southwest</li>
+      <li><strong>Living Room:</strong> North or East</li>
+      <li><strong>Bathrooms:</strong> Northwest or Southeast</li>
+      <li><strong>Pooja/Prayer Room:</strong> Northeast</li>
+    </ul>
+  </section>
+
+  <section id="tips">
+    <h2>Quick Tips</h2>
+    <ol>
+      <li>Keep Northeast clean and clutter-free.</li>
+      <li>Ensure proper ventilation and natural light.</li>
+      <li>Avoid heavy objects in the center of the house.</li>
+      <li>Use natural colors for walls and furniture.</li>
+      <li>Maintain harmony with nature — plants, water features, etc.</li>
+    </ol>
+  </section>
+
+  <section id="benefits">
+    <h2>Benefits of Vastu-Compliant Spaces</h2>
+    <ul>
+      <li>Mental peace and positivity</li>
+      <li>Better health and energy levels</li>
+      <li>Improved business success and wealth</li>
+      <li>Family harmony and reduced conflicts</li>
+      <li>Enhanced creativity and productivity</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+  // Smooth scroll for table of contents
+  document.querySelectorAll('.toc a').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+</body>
+</html>

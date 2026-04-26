@@ -1,0 +1,180 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Application Insights - Cosmo Vastu</title>
+    <link rel="stylesheet" href="{% static 'css/application_insights.css' %}">
+    <script defer src="{% static 'js/application_insights.js' %}"></script>
+</head>
+
+<body>
+
+    <div class="hero-section">
+        <h1>Vastu Web App - Application Tour</h1>
+        <p>Explore Powerful Features & Intelligent Analysis Engine</p>
+        <a href="/dashboard/" class="back-btn">⬅ Back to Dashboard</a>
+    </div>
+
+    <div class="timeline-container">
+
+        <!-- 1 Upload Blueprint -->
+        <div class="timeline-item">
+            <div class="timeline-icon">📐</div>
+            <div class="timeline-content">
+                <h2>Upload Blueprint & Create Project</h2>
+                <p>
+                    User uploads floor plan image and system automatically creates a new Vastu Project.
+                </p>
+
+                <div class="extra-content">
+                    <ul>
+                        <li>✔ Upload JPG / PNG blueprint</li>
+                        <li>✔ Automatic project ID generation</li>
+                        <li>✔ Save project for future editing</li>
+                        <li>✔ Project dashboard tracking</li>
+                    </ul>
+                    <p>
+                        Each uploaded blueprint becomes an independent analysis project.
+                    </p>
+                </div>
+
+                <button class="read-more-btn">View Details</button>
+            </div>
+        </div>
+
+        <!-- 2 Select Points -->
+        <div class="timeline-item">
+            <div class="timeline-icon">📍</div>
+            <div class="timeline-content">
+                <h2>Select Reference Points</h2>
+                <p>
+                    User selects key structural points to define building boundaries.
+                </p>
+
+                <div class="extra-content">
+                    <ul>
+                        <li>✔ Corner point selection</li>
+                        <li>✔ Wall boundary marking</li>
+                        <li>✔ Precision coordinate mapping</li>
+                        <li>✔ Editable point correction</li>
+                    </ul>
+                    <p>
+                        These points help system calculate accurate geometry for analysis.
+                    </p>
+                </div>
+
+                <button class="read-more-btn">View Details</button>
+            </div>
+        </div>
+
+        <!-- 3 Compass Set -->
+        <div class="timeline-item">
+            <div class="timeline-icon">🧭</div>
+            <div class="timeline-content">
+                <h2>Set Compass & Direction Alignment</h2>
+                <p>
+                    Align blueprint according to real-world North direction.
+                </p>
+
+                <div class="extra-content">
+                    <ul>
+                        <li>✔ 360° rotation support</li>
+                        <li>✔ Manual compass adjustment</li>
+                        <li>✔ Live directional indicator</li>
+                        <li>✔ Precision angle calibration</li>
+                    </ul>
+                    <p>
+                        Direction accuracy ensures correct zone division & energy mapping.
+                    </p>
+                </div>
+
+                <button class="read-more-btn">View Details</button>
+            </div>
+        </div>
+
+        <!-- 4 Zone Division -->
+        <div class="timeline-item">
+            <div class="timeline-icon">🟦</div>
+            <div class="timeline-content">
+                <h2>Automatic Zone Division</h2>
+                <p>
+                    After direction alignment, structure is divided into 8 Vastu zones.
+                </p>
+
+                <div class="extra-content">
+                    <ul>
+                        <li>✔ North, South, East, West mapping</li>
+                        <li>✔ NE, NW, SE, SW sub-zones</li>
+                        <li>✔ Brahmasthan (Center) detection</li>
+                        <li>✔ Visual color-coded grid</li>
+                    </ul>
+                    <p>
+                        Each zone is mapped for energy evaluation.
+                    </p>
+                </div>
+
+                <button class="read-more-btn">View Details</button>
+            </div>
+        </div>
+
+        <!-- 5 Graph Plot -->
+        <div class="timeline-item">
+            <div class="timeline-icon">📊</div>
+            <div class="timeline-content">
+                <h2>Energy Graph & Performance Plot</h2>
+                <p>
+                    System generates graphical analysis of zone performance.
+                </p>
+
+                <div class="extra-content">
+                    <ul>
+                        <li>✔ Zone-wise score calculation</li>
+                        <li>✔ Energy balance visualization</li>
+                        <li>✔ Compliance percentage graph</li>
+                        <li>✔ Comparative performance chart</li>
+                    </ul>
+                    <p>
+                        Graph helps users visually understand imbalance areas.
+                    </p>
+                </div>
+
+                <button class="read-more-btn">View Details</button>
+            </div>
+        </div>
+
+        <!-- 6 AI Integration -->
+        <div class="timeline-item">
+            <div class="timeline-icon">🤖</div>
+            <div class="timeline-content">
+                <h2>AI Integrated Smart Analysis</h2>
+                <p>
+                    AI module evaluates complete layout and detects vastu defects.
+                </p>
+
+                <div class="extra-content">
+                    <ul>
+                        <li>✔ Defect detection engine</li>
+                        <li>✔ Severity scoring system</li>
+                        <li>✔ Personalized remedy suggestions</li>
+                        <li>✔ Smart recommendations based on layout</li>
+                    </ul>
+                    <p>
+                        AI enhances traditional vastu analysis with intelligent logic.
+                    </p>
+                </div>
+
+                <button class="read-more-btn">View Details</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="cta-section">
+        <h2>Ready to Experience Smart Vastu Analysis?</h2>
+        <a href="/dashboard/" class="cta-btn">Start Using Now 🚀</a>
+    </div>
+
+</body>
+
+</html>

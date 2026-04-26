@@ -1,0 +1,1244 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Layout — Cosmo Vastu</title>
+    <link rel="icon" href="data:,">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Lato:wght@300;400;700&display=swap');
+
+        :root {
+            --nav: #0f1f0e;
+            --nav2: #1a3318;
+            --accent: #4ade80;
+            --accent2: #86efac;
+            --gold: #d4af37;
+            --panel: #f7f9f4;
+            --border: #d4e4cc;
+            --text: #1a2e19;
+            --muted: #5a7a55;
+            --danger: #dc2626;
+            --sidebar-w: 220px;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: #eef3ea;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            background: var(--nav);
+            border-bottom: 2px solid var(--accent);
+            padding: 0 20px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+        }
+        .topbar-title {
+            font-family: 'Cinzel', serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .topbar-title .dot { color: var(--accent); }
+        .topbar-right { display: flex; align-items: center; gap: 8px; }
+        .topbar-back {
+            padding: 6px 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.07);
+            font-size: 12px;
+            color: rgba(255,255,255,0.75);
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Lato', sans-serif;
+            transition: all 0.15s;
+        }
+        .topbar-back:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+        /* ── LAYOUT ── */
+        .main { display: flex; flex: 1; overflow: hidden; }
+
+        /* ── SIDEBAR ── */
+        .tools-panel {
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            max-width: var(--sidebar-w);
+            background: var(--panel);
+            border-right: 1.5px solid var(--border);
+            padding: 10px 8px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .tools-panel::-webkit-scrollbar { width: 4px; }
+        .tools-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .sec-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 12px 0 4px;
+            padding-left: 2px;
+        }
+        .sec-title:first-child { margin-top: 0; }
+
+        /* ── FIX 2: Bigger tool buttons ── */
+        .tool-btn {
+            width: 100%;
+            padding: 10px 11px;
+            border-radius: 7px;
+            border: 1.5px solid var(--border);
+            background: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            min-height: 38px;
+        }
+        .tool-btn:hover { background: #f0f7eb; border-color: #a8d8a0; color: #1a3318; }
+        .tool-btn.active { background: #e8f5e0; border-color: #4ade80; color: #166534; font-weight: 700; }
+        .tool-btn.danger { color: var(--danger); border-color: #fca5a5; background: #fff5f5; }
+        .tool-btn.danger:hover { background: #fee2e2; }
+        .tool-btn .icon { font-size: 14px; flex-shrink: 0; }
+
+        /* ── VASTU ROOM TYPE SELECTOR ── */
+        .room-type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+        .room-type-btn {
+            padding: 7px 4px;
+            border-radius: 6px;
+            border: 1.5px solid var(--border);
+            background: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            color: var(--text);
+            min-height: 44px;
+            justify-content: center;
+        }
+        .room-type-btn .rt-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+        .room-type-btn:hover { border-color: #a8d8a0; background: #f0f7eb; }
+        .room-type-btn.active { border-width: 2px; }
+
+        /* ── SIZE INPUTS ── */
+        .size-input {
+            width: 100%;
+            padding: 7px 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 5px;
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            background: #fff;
+            font-family: 'Lato', sans-serif;
+        }
+        .size-input:focus { border-color: #4ade80; background: #fff; }
+        .size-row { display: flex; gap: 4px; align-items: center; }
+        .size-row label { font-size: 11px; color: var(--muted); white-space: nowrap; font-weight: 700; }
+
+        /* ── THICKNESS ── */
+        .thickness-row { display: flex; gap: 3px; }
+        .th-btn {
+            flex: 1;
+            padding: 6px 2px;
+            border: 1.5px solid var(--border);
+            border-radius: 5px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            color: var(--muted);
+            font-weight: 600;
+            min-height: 34px;
+        }
+        .th-btn.active { border-color: #4ade80; background: #e8f5e0; color: #166534; }
+
+        /* ── WALL POINTS INFO ── */
+        .wall-points-info {
+            font-size: 11px;
+            color: #166534;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 5px;
+            padding: 6px 8px;
+            display: none;
+        }
+
+        /* ── AI SUGGESTION BOX ── */
+        .ai-suggestion-box {
+            background: linear-gradient(135deg, #fefce8, #f0fdf4);
+            border: 1.5px solid #d4af37;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 11.5px;
+            color: #78350f;
+            display: none;
+            line-height: 1.5;
+            position: relative;
+        }
+        .ai-suggestion-box .ai-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #d4af37;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .ai-suggestion-box .ai-text { color: #3d2c00; line-height: 1.6; }
+        .ai-suggestion-box .ai-loading { color: #a16207; font-style: italic; }
+        .btn-ai-suggest {
+            width: 100%;
+            padding: 10px 11px;
+            border-radius: 7px;
+            border: 1.5px solid #d4af37;
+            background: linear-gradient(135deg, #fefce8, #fffbeb);
+            font-size: 13px;
+            font-weight: 700;
+            color: #92400e;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.15s;
+            min-height: 38px;
+        }
+        .btn-ai-suggest:hover { background: #fef9c3; border-color: #b45309; }
+        .btn-ai-suggest:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── CANVAS AREA ── */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px;
+            overflow: auto;
+            background: #e8ede4;
+        }
+        .canvas-hint {
+            font-size: 11.5px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.7);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        .canvas-wrapper {
+            position: relative;
+            background: #fff;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            cursor: crosshair;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+        }
+        #drawCanvas {
+            display: block;
+            border-radius: 10px;
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cline x1='10' y1='0' x2='10' y2='20' stroke='black' stroke-width='1.5'/%3E%3Cline x1='0' y1='10' x2='20' y2='10' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, crosshair !important;
+        }
+        #gridCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            pointer-events: none;
+            border-radius: 10px;
+        }
+
+        /* ── ACTION BAR ── */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .action-btn {
+            padding: 9px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            font-family: 'Lato', sans-serif;
+            letter-spacing: 0.3px;
+        }
+        .btn-download { background: var(--nav); color: #fff; }
+        .btn-download:hover { background: var(--nav2); }
+        .btn-create { background: linear-gradient(135deg, #166534, #16a34a); color: #fff; box-shadow: 0 2px 8px rgba(22,101,52,0.3); }
+        .btn-create:hover { box-shadow: 0 4px 16px rgba(22,101,52,0.4); transform: translateY(-1px); }
+        .btn-clear { background: #fff; color: var(--danger); border: 1.5px solid #fca5a5; }
+        .btn-clear:hover { background: #fee2e2; }
+
+        /* ── MODAL ── */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-box {
+            background: #fff;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 460px;
+            padding: 24px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .modal-title { font-size: 17px; font-weight: 700; color: var(--nav); margin-bottom: 16px; font-family: 'Cinzel', serif; }
+        .modal-close { position: absolute; top: 14px; right: 18px; background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 10.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 8px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: 7px; font-size: 13px;
+            color: var(--text); outline: none;
+            background: #f7f9f4;
+            font-family: 'Lato', sans-serif;
+            transition: border 0.15s;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #4ade80; background: #fff; }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .modal-submit {
+            width: 100%; padding: 11px;
+            background: linear-gradient(135deg, #166534, #16a34a);
+            color: #fff; border: none; border-radius: 9px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            margin-top: 4px; font-family: 'Lato', sans-serif;
+        }
+        .modal-submit:hover { opacity: 0.9; }
+        .modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .preview-thumb { width: 100%; height: 90px; object-fit: contain; border: 1px solid var(--border); border-radius: 7px; margin-bottom: 12px; background: #f7f9f4; }
+
+        /* ── DRAG HANDLE CURSOR ── */
+        .canvas-wrapper.drag-mode { cursor: move !important; }
+        .canvas-wrapper.drag-mode #drawCanvas { cursor: move !important; }
+
+        /* ── VASTU LEGEND BADGE ── */
+        .vastu-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: #fef9c3;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-left: auto;
+        }
+
+        /* ── DIVIDER ── */
+        .divider { height: 1px; background: var(--border); margin: 4px 0; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        COSMO <span class="dot">VASTU</span>
+        <span style="color:rgba(255,255,255,0.35); font-size:11px; font-family:Lato; font-weight:300; letter-spacing:3px;">— LAYOUT</span>
+    </div>
+    <div class="topbar-right">
+        <a href="/dashboard/" class="topbar-back">← Dashboard</a>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- ══ SIDEBAR ══ -->
+    <div class="tools-panel">
+
+        <div class="sec-title">Draw Tools</div>
+        <button class="tool-btn active" id="btn-wall" onclick="setTool('wall')">
+            <span class="icon">▬</span> Wall
+        </button>
+        <button class="tool-btn" id="btn-room" onclick="setTool('room')">
+            <span class="icon">▭</span> Room (drag)
+        </button>
+        <button class="tool-btn" id="btn-door" onclick="setTool('door')">
+            <span class="icon">⌐</span> Door
+        </button>
+        <button class="tool-btn" id="btn-window" onclick="setTool('window')">
+            <span class="icon">⊟</span> Window
+        </button>
+        <button class="tool-btn" id="btn-move" onclick="setTool('move')">
+            <span class="icon">✥</span> Move Room
+        </button>
+
+        <div class="wall-points-info" id="wallPointsInfo">
+            <span id="wallPtCount">0</span> points added
+        </div>
+        <button class="tool-btn" id="btn-createwall" onclick="createWallFromPoints()"
+            style="display:none; background:#e8f5e0; border-color:#4ade80; color:#166534; font-weight:700; margin-top:2px;">
+            ✓ Create Wall
+        </button>
+        <button class="tool-btn danger" id="btn-cancelwall" onclick="cancelWallPoints()"
+            style="display:none; margin-top:2px;">
+            ✕ Cancel Points
+        </button>
+
+        <div class="divider"></div>
+
+        <!-- ── VASTU ROOM TYPE ── -->
+        <div class="sec-title" style="display:flex;align-items:center;">
+            Room Type
+            <span class="vastu-badge">✦ Vastu</span>
+        </div>
+        <div class="room-type-grid" id="roomTypeGrid"></div>
+
+        <div class="sec-title" style="margin-top:8px;">Room Name</div>
+        <input type="text" id="roomNameInput" class="size-input" placeholder="e.g. Bedroom"/>
+
+        <div class="sec-title">Room Size (ft)</div>
+        <div class="size-row">
+            <label>W</label>
+            <input type="number" id="roomW" class="size-input" placeholder="W" min="1" style="width:60px;"/>
+            <label>H</label>
+            <input type="number" id="roomH" class="size-input" placeholder="H" min="1" style="width:60px;"/>
+        </div>
+        <button class="tool-btn" onclick="addRoomBySize()" style="margin-top:4px; background:#f0f7eb; border-color:#a8d8a0; color:#166534; font-weight:700;">
+            <span class="icon">+</span> Add Room by Size
+        </button>
+
+        <div class="divider"></div>
+
+        <div class="sec-title">Thickness</div>
+        <div class="thickness-row">
+            <button class="th-btn" id="th-thin" onclick="setThickness(2)">Thin</button>
+            <button class="th-btn active" id="th-med" onclick="setThickness(4)">Med</button>
+            <button class="th-btn" id="th-thick" onclick="setThickness(8)">Thick</button>
+        </div>
+
+        <div class="divider"></div>
+
+<!--        &lt;!&ndash; ── AI VASTU SUGGESTIONS ── &ndash;&gt;-->
+<!--        <div class="sec-title" style="display:flex;align-items:center;">-->
+<!--            AI Suggestions-->
+<!--            <span class="vastu-badge">✦ AI</span>-->
+<!--        </div>-->
+<!--        <button class="btn-ai-suggest" id="btnAiSuggest" onclick="getCookie(name)">-->
+<!--            <span style="font-size:14px;">✦</span> Suggest Room Placements-->
+<!--        </button>-->
+<!--        <div class="ai-suggestion-box" id="aiSuggestionBox">-->
+<!--            <div class="ai-label">✦ Vastu AI</div>-->
+<!--            <div class="ai-text" id="aiSuggestionText"></div>-->
+<!--        </div>-->
+
+<!--        <div class="divider"></div>-->
+
+        <div class="sec-title">Canvas</div>
+        <button class="tool-btn" onclick="toggleGrid()">
+            <span class="icon">⊞</span> Toggle Grid
+        </button>
+        <button class="tool-btn" onclick="undoLast()">
+            <span class="icon">↩</span> Undo
+        </button>
+        <button class="tool-btn" onclick="toggleCompass()">
+            <span class="icon">🧭</span> Compass
+        </button>
+        <button class="tool-btn" onclick="toggleSnapMode()">
+            <span class="icon" id="snapIcon">🔲</span> <span id="snapLabel">Snap to Wall: ON</span>
+        </button>
+        <button class="tool-btn danger" onclick="clearCanvas()">
+            <span class="icon">✕</span> Clear All
+        </button>
+
+    </div>
+    <!-- ══ END SIDEBAR ══ -->
+
+    <div class="canvas-area">
+        <div class="canvas-hint">
+            <b>Wall:</b> click points → Create Wall &nbsp;|&nbsp;
+            <b>Room:</b> drag &nbsp;|&nbsp;
+            <b>Move Room:</b> drag placed rooms &nbsp;|&nbsp;
+            <b>Snap to Wall:</b> rooms auto-align inside walls
+        </div>
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="gridCanvas" width="820" height="580"></canvas>
+            <canvas id="drawCanvas" width="820" height="580"></canvas>
+        </div>
+        <div class="action-bar">
+            <button class="action-btn btn-clear" onclick="clearCanvas()">✕ Clear</button>
+            <button class="action-btn btn-download" onclick="downloadLayout()">⬇ Download PNG</button>
+            <button class="action-btn btn-create" onclick="openCreateModal()">✦ Create Project</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- CREATE PROJECT MODAL -->
+<div class="modal-backdrop" id="createModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <div class="modal-title">✦ Create New Project</div>
+        <img id="modalPreview" class="preview-thumb" src="" alt="Preview"/>
+        <form method="POST" action="/create-project-from-layout/" enctype="multipart/form-data" id="createForm">
+            {% csrf_token %}
+            <input type="hidden" name="layout_image_data" id="layoutImageData"/>
+            <div class="form-group">
+                <label>Project Name *</label>
+                <input type="text" name="projectName" placeholder="e.g. My Home Layout" required/>
+            </div>
+            <div class="form-group">
+                <label>Description *</label>
+                <textarea name="description" placeholder="Brief description..." required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Category *</label>
+                <select name="category" required>
+                    <option value="">Select category</option>
+                    <option value="Residential">Residential</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Industrial">Industrial</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status *</label>
+                <select name="status" required>
+                    <option value="">Select status</option>
+                    <option value="Planning">Planning</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+            </div>
+            <button type="submit" class="modal-submit" id="submitBtn">✦ Create Project &amp; Open Workspace</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  FIX 3: Unique color palette — no repeats
+//  Each room type gets a distinct color from
+//  a hand-picked non-repeating set
+// ════════════════════════════════════════════
+const VASTU_ROOMS = [
+    { key:'master',   label:'Master Bed', color:'#1a3a6b', bg:'#dbeafe', dir:'SW',  tip:'Southwest — stability' },
+    { key:'kitchen',  label:'Kitchen',    color:'#7c2d12', bg:'#fed7aa', dir:'SE',  tip:'Southeast — fire/Agni' },
+    { key:'living',   label:'Living Rm',  color:'#14532d', bg:'#dcfce7', dir:'N/NE',tip:'North/NE — prosperity' },
+    { key:'pooja',    label:'Pooja/Puja', color:'#78350f', bg:'#fef9c3', dir:'NE',  tip:'Northeast — divine' },
+    { key:'kids',     label:'Kids Room',  color:'#5b21b6', bg:'#ede9fe', dir:'NW',  tip:'Northwest — movement' },
+    { key:'bathroom', label:'Bathroom',   color:'#0e7490', bg:'#cffafe', dir:'NW',  tip:'Northwest — water' },
+    { key:'study',    label:'Study',      color:'#1e3a5f', bg:'#e0f2fe', dir:'W',   tip:'West — learning' },
+    { key:'store',    label:'Store Rm',   color:'#3f3f46', bg:'#f4f4f5', dir:'SW',  tip:'Southwest — heavy' },
+    { key:'garage',   label:'Garage',     color:'#57534e', bg:'#f5f5f4', dir:'NW',  tip:'Northwest' },
+    { key:'wall',     label:'Wall/Outer', color:'#292524', bg:'#fafaf9', dir:'—',   tip:'Boundary wall' },
+    { key:'custom',   label:'Custom',     color:'#166534', bg:'#f0fdf4', dir:'—',   tip:'Custom room' },
+];
+
+// ── FIX 3: Auto-assign unique colors to rooms when added ──
+// Palette of 16 distinct fill colors (bg + stroke pairs)
+const UNIQUE_COLOR_PAIRS = [
+    { color:'#1a3a6b', bg:'#dbeafe' },
+    { color:'#7c2d12', bg:'#fed7aa' },
+    { color:'#14532d', bg:'#dcfce7' },
+    { color:'#5b21b6', bg:'#ede9fe' },
+    { color:'#0e7490', bg:'#cffafe' },
+    { color:'#78350f', bg:'#fef9c3' },
+    { color:'#831843', bg:'#fce7f3' },
+    { color:'#1e3a5f', bg:'#e0f2fe' },
+    { color:'#3f3f46', bg:'#f4f4f5' },
+    { color:'#065f46', bg:'#d1fae5' },
+    { color:'#7f1d1d', bg:'#fee2e2' },
+    { color:'#3b0764', bg:'#f5f3ff' },
+    { color:'#0c4a6e', bg:'#e0f2fe' },
+    { color:'#422006', bg:'#fef3c7' },
+    { color:'#134e4a', bg:'#ccfbf1' },
+    { color:'#1c1917', bg:'#f5f5f4' },
+];
+let colorIndex = 0;
+function getNextUniqueColor() {
+    const pair = UNIQUE_COLOR_PAIRS[colorIndex % UNIQUE_COLOR_PAIRS.length];
+    colorIndex++;
+    return pair;
+}
+
+let selectedRoomType = VASTU_ROOMS[0];
+
+function buildRoomTypeGrid() {
+    const grid = document.getElementById('roomTypeGrid');
+    grid.innerHTML = '';
+    VASTU_ROOMS.forEach(rt => {
+        const btn = document.createElement('button');
+        btn.className = 'room-type-btn' + (rt.key === selectedRoomType.key ? ' active' : '');
+        btn.title = rt.tip + ' (' + rt.dir + ')';
+        if (rt.key === selectedRoomType.key) {
+            btn.style.borderColor = rt.color;
+            btn.style.background = rt.bg;
+        }
+        btn.innerHTML = `<span class="rt-dot" style="background:${rt.color}; opacity:0.85;"></span><span>${rt.label}</span>`;
+        btn.addEventListener('click', () => {
+            selectedRoomType = rt;
+            document.getElementById('roomNameInput').value = rt.label !== 'Custom' ? rt.label : '';
+            document.querySelectorAll('.room-type-btn').forEach((b) => {
+                b.classList.remove('active');
+                b.style.borderColor = '';
+                b.style.background = '';
+            });
+            btn.classList.add('active');
+            btn.style.borderColor = rt.color;
+            btn.style.background = rt.bg;
+        });
+        grid.appendChild(btn);
+    });
+}
+buildRoomTypeGrid();
+
+// ════════════════════════════════════════════
+//  CANVAS SETUP
+// ════════════════════════════════════════════
+const drawCanvas  = document.getElementById('drawCanvas');
+const gridCanvas  = document.getElementById('gridCanvas');
+const ctx         = drawCanvas.getContext('2d');
+const gridCtx     = gridCanvas.getContext('2d');
+
+let currentTool      = 'wall';
+let currentThickness = 4;
+let isDrawing        = false;
+let startX = 0, startY = 0;
+
+// ── FIX 1: Separate wall history from room list ──
+// wallHistory stores only wall/door/window pixel states
+// placedRooms is always re-rendered on top — never baked into wallHistory
+let wallHistory      = [];
+let snapshot         = null;
+let showGrid         = true;
+let showCompassFlag  = false;
+let snapToWall       = true;
+let wallPoints       = [];
+let mouseOnCanvas    = false;
+
+// Each entry: { x, y, w, h, name, color, bg, sizeLabel }
+let placedRooms = [];
+let draggingRoom = null;
+let dragOffX = 0, dragOffY = 0;
+
+// ── GRID ──
+function drawGrid() {
+    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+    if (!showGrid) return;
+    gridCtx.strokeStyle = '#d4e4cc';
+    gridCtx.lineWidth   = 0.5;
+    const step = 20;
+    for (let x = 0; x <= gridCanvas.width; x += step) {
+        gridCtx.beginPath(); gridCtx.moveTo(x, 0); gridCtx.lineTo(x, gridCanvas.height); gridCtx.stroke();
+    }
+    for (let y = 0; y <= gridCanvas.height; y += step) {
+        gridCtx.beginPath(); gridCtx.moveTo(0, y); gridCtx.lineTo(gridCanvas.width, y); gridCtx.stroke();
+    }
+    gridCtx.strokeStyle = '#b0ccaa';
+    gridCtx.lineWidth = 1;
+    gridCtx.beginPath(); gridCtx.moveTo(gridCanvas.width/2, 0); gridCtx.lineTo(gridCanvas.width/2, gridCanvas.height); gridCtx.stroke();
+    gridCtx.beginPath(); gridCtx.moveTo(0, gridCanvas.height/2); gridCtx.lineTo(gridCanvas.width, gridCanvas.height/2); gridCtx.stroke();
+}
+drawGrid();
+function toggleGrid() { showGrid = !showGrid; drawGrid(); }
+
+// ── SNAP ──
+function snap(v) { return Math.round(v / 20) * 20; }
+
+// ── SNAP TO WALL ──
+function toggleSnapMode() {
+    snapToWall = !snapToWall;
+    document.getElementById('snapIcon').textContent = snapToWall ? '🔲' : '⬜';
+    document.getElementById('snapLabel').textContent = 'Snap to Wall: ' + (snapToWall ? 'ON' : 'OFF');
+}
+
+function snapInsideWalls(x1, y1, w, h) {
+    if (!snapToWall || wallHistory.length === 0) return { x: x1, y: y1 };
+    const imgData = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+    const data = imgData.data;
+    let minWX = drawCanvas.width, maxWX = 0, minWY = drawCanvas.height, maxWY = 0;
+    let found = false;
+    for (let py = 0; py < drawCanvas.height; py += 4) {
+        for (let px = 0; px < drawCanvas.width; px += 4) {
+            const idx = (py * drawCanvas.width + px) * 4;
+            const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+            if (a > 80 && (r < 60 || (r < 80 && g < 80))) {
+                found = true;
+                if (px < minWX) minWX = px;
+                if (px > maxWX) maxWX = px;
+                if (py < minWY) minWY = py;
+                if (py > maxWY) maxWY = py;
+            }
+        }
+    }
+    if (!found) return { x: x1, y: y1 };
+    const wallPad = 12;
+    const clampedX = Math.max(minWX + wallPad, Math.min(x1, maxWX - w - wallPad));
+    const clampedY = Math.max(minWY + wallPad, Math.min(y1, maxWY - h - wallPad));
+    return { x: snap(clampedX), y: snap(clampedY) };
+}
+
+// ── COMPASS ──
+function toggleCompass() {
+    showCompassFlag = !showCompassFlag;
+    redrawAll();
+}
+function drawCompass() {
+    if (!showCompassFlag) return;
+    const cx = drawCanvas.width - 58, cy = 58, r = 44;
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fillStyle = '#fffbeb'; ctx.fill();
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.stroke();
+    [{l:'N',a:-90,c:'#dc2626'},{l:'S',a:90,c:'#374151'},{l:'E',a:0,c:'#1d4ed8'},{l:'W',a:180,c:'#374151'}].forEach(d => {
+        const rad = d.a * Math.PI / 180;
+        ctx.fillStyle = d.c; ctx.font = 'bold 10px Lato';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(d.l, cx + Math.cos(rad)*(r-13), cy + Math.sin(rad)*(r-13));
+    });
+    ctx.beginPath(); ctx.moveTo(cx, cy-r+17); ctx.lineTo(cx-4, cy+2); ctx.lineTo(cx+4, cy+2); ctx.closePath();
+    ctx.fillStyle = '#dc2626'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, cy+r-17); ctx.lineTo(cx-4, cy-2); ctx.lineTo(cx+4, cy-2); ctx.closePath();
+    ctx.fillStyle = '#374151'; ctx.fill();
+    ctx.restore();
+}
+
+// ── GET CANVAS XY ──
+function getCanvasXY(e) {
+    const r = drawCanvas.getBoundingClientRect();
+    return { x: snap(e.clientX - r.left), y: snap(e.clientY - r.top) };
+}
+function getRawCanvasXY(e) {
+    const r = drawCanvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+// ── TOOL ──
+function setTool(tool) {
+    if (currentTool === 'wall' && tool !== 'wall') cancelWallPoints();
+    currentTool = tool;
+    document.querySelectorAll('.tool-btn[id^="btn-"]').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('btn-' + tool);
+    if (btn) btn.classList.add('active');
+    // setTool() function mein yeh line:
+    drawCanvas.style.cursor = tool === 'move' ? 'move' : 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cline x1=\'10\' y1=\'0\' x2=\'10\' y2=\'20\' stroke=\'black\' stroke-width=\'1.5\'/%3E%3Cline x1=\'0\' y1=\'10\' x2=\'20\' y2=\'10\' stroke=\'black\' stroke-width=\'1.5\'/%3E%3C/svg%3E") 10 10, crosshair';
+    const isWall = (tool === 'wall');
+    document.getElementById('wallPointsInfo').style.display  = isWall ? 'block' : 'none';
+    document.getElementById('btn-cancelwall').style.display  = isWall ? 'flex'  : 'none';
+}
+
+function setThickness(t) {
+    currentThickness = t;
+    document.querySelectorAll('.th-btn').forEach(b => b.classList.remove('active'));
+    if (t===2) document.getElementById('th-thin').classList.add('active');
+    else if (t===4) document.getElementById('th-med').classList.add('active');
+    else document.getElementById('th-thick').classList.add('active');
+}
+
+// ── WALL MODE ──
+function updateWallPointsUI() {
+    document.getElementById('wallPtCount').textContent = wallPoints.length;
+    document.getElementById('btn-createwall').style.display = wallPoints.length >= 2 ? 'flex' : 'none';
+}
+function cancelWallPoints() {
+    wallPoints = [];
+    updateWallPointsUI();
+    redrawAll();
+}
+function createWallFromPoints() {
+    if (wallPoints.length < 2) return;
+    // Restore last wall state before drawing new wall
+    if (wallHistory.length > 0) {
+        ctx.putImageData(wallHistory[wallHistory.length - 1], 0, 0);
+    } else {
+        ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    }
+    ctx.save();
+    ctx.strokeStyle = selectedRoomType.color;
+    ctx.lineWidth   = currentThickness;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.beginPath();
+    ctx.moveTo(wallPoints[0].x, wallPoints[0].y);
+    for (let i = 1; i < wallPoints.length; i++) ctx.lineTo(wallPoints[i].x, wallPoints[i].y);
+    ctx.stroke();
+    ctx.restore();
+    // Save ONLY the walls state (no rooms)
+    wallHistory.push(ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+    if (wallHistory.length > 50) wallHistory.shift();
+    wallPoints = [];
+    updateWallPointsUI();
+    // Now redraw rooms on top
+    drawRoomOverlays();
+    drawCompass();
+}
+function drawWallPointsOnly() {
+    if (wallPoints.length === 0) return;
+    ctx.save();
+    ctx.strokeStyle = selectedRoomType.color;
+    ctx.lineWidth   = currentThickness;
+    ctx.lineCap     = 'round';
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(wallPoints[0].x, wallPoints[0].y);
+    for (let i = 1; i < wallPoints.length; i++) ctx.lineTo(wallPoints[i].x, wallPoints[i].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    wallPoints.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+        ctx.fillStyle = selectedRoomType.color; ctx.fill();
+    });
+    ctx.restore();
+}
+
+// ── FIX 1: Room overlay — always re-drawn from placedRooms array ──
+// This ensures moved rooms don't leave ghost copies behind
+function drawRoomOverlays() {
+    placedRooms.forEach(rm => {
+        drawRoomShape(rm.x, rm.y, rm.w, rm.h, rm.name, rm.color, rm.bg, rm.sizeLabel, false);
+    });
+    drawCompass();
+}
+
+// ── DRAW A ROOM SHAPE ──
+function drawRoomShape(x1, y1, w, h, name, color, bg, sizeLabel, isPreview) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = currentThickness;
+    ctx.setLineDash(isPreview ? [6, 4] : []);
+    ctx.strokeRect(x1, y1, w, h);
+    ctx.fillStyle = bg + (isPreview ? 'aa' : 'cc');
+    ctx.fillRect(x1, y1, w, h);
+    ctx.setLineDash([]);
+    const absW = Math.abs(w), absH = Math.abs(h);
+    const fontSize = Math.max(10, Math.min(14, absW / 7));
+    ctx.fillStyle    = color;
+    ctx.font         = `bold ${fontSize}px Lato`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    if (name) ctx.fillText(name, x1 + w/2, y1 + h/2 - (sizeLabel ? fontSize*0.7 : 0));
+    if (sizeLabel) {
+        ctx.font      = `${Math.max(9, fontSize-2)}px Lato`;
+        ctx.fillStyle = color + 'bb';
+        ctx.fillText(sizeLabel, x1 + w/2, y1 + h/2 + fontSize * 0.7);
+    }
+    ctx.restore();
+}
+
+// ── FIX 1: redrawAll restores wall history only, then rooms are drawn on top ──
+function redrawAll() {
+    if (wallHistory.length > 0) {
+        ctx.putImageData(wallHistory[wallHistory.length - 1], 0, 0);
+    } else {
+        ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    }
+    drawRoomOverlays();
+    drawCompass();
+}
+
+// ── MOUSE EVENTS ──
+drawCanvas.addEventListener('mouseenter', () => { mouseOnCanvas = true; });
+drawCanvas.addEventListener('mouseleave', () => {
+    mouseOnCanvas = false;
+    if (currentTool === 'wall' && wallPoints.length > 0) {
+        redrawAll();
+        drawWallPointsOnly();
+    }
+    if (isDrawing) isDrawing = false;
+    draggingRoom = null;
+});
+
+drawCanvas.addEventListener('mousedown', e => {
+    const { x, y } = getCanvasXY(e);
+    const raw = getRawCanvasXY(e);
+
+    if (currentTool === 'move') {
+        for (let i = placedRooms.length - 1; i >= 0; i--) {
+            const rm = placedRooms[i];
+            const rx = Math.min(rm.x, rm.x + rm.w);
+            const ry = Math.min(rm.y, rm.y + rm.h);
+            const rw = Math.abs(rm.w), rh = Math.abs(rm.h);
+            if (raw.x >= rx && raw.x <= rx+rw && raw.y >= ry && raw.y <= ry+rh) {
+                draggingRoom = i;
+                dragOffX = raw.x - rm.x;
+                dragOffY = raw.y - rm.y;
+                break;
+            }
+        }
+        return;
+    }
+
+    if (currentTool === 'wall') {
+        wallPoints.push({ x, y });
+        updateWallPointsUI();
+        redrawAll();
+        drawWallPointsOnly();
+        return;
+    }
+
+    isDrawing = true;
+    startX = x; startY = y;
+    snapshot = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+});
+
+drawCanvas.addEventListener('mousemove', e => {
+    const { x, y } = getCanvasXY(e);
+    const raw = getRawCanvasXY(e);
+
+    if (currentTool === 'move' && draggingRoom !== null) {
+        // FIX 1: Update position in array, then redraw walls + all rooms fresh
+        const rm = placedRooms[draggingRoom];
+        rm.x = snap(raw.x - dragOffX);
+        rm.y = snap(raw.y - dragOffY);
+        // Restore wall canvas state, then re-render ALL rooms
+        if (wallHistory.length > 0) {
+            ctx.putImageData(wallHistory[wallHistory.length - 1], 0, 0);
+        } else {
+            ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        }
+        drawRoomOverlays();
+        return;
+    }
+
+    if (currentTool === 'wall') {
+        if (!mouseOnCanvas || wallPoints.length === 0) return;
+        redrawAll();
+        drawWallPointsOnly();
+        ctx.save();
+        ctx.strokeStyle  = selectedRoomType.color;
+        ctx.lineWidth    = currentThickness;
+        ctx.globalAlpha  = 0.35;
+        ctx.setLineDash([4, 4]);
+        ctx.lineCap      = 'round';
+        ctx.beginPath();
+        ctx.moveTo(wallPoints[wallPoints.length-1].x, wallPoints[wallPoints.length-1].y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        return;
+    }
+
+    if (!isDrawing) return;
+    ctx.putImageData(snapshot, 0, 0);
+    drawRoomOverlays();
+    const name = document.getElementById('roomNameInput').value.trim();
+    drawShape(startX, startY, x, y, true, name);
+    drawCompass();
+});
+
+drawCanvas.addEventListener('mouseup', e => {
+    if (currentTool === 'move') {
+        draggingRoom = null;
+        return;
+    }
+    if (currentTool === 'wall') return;
+    if (!isDrawing) return;
+    isDrawing = false;
+    const { x, y } = getCanvasXY(e);
+
+    // Restore clean snapshot before finalizing
+    ctx.putImageData(snapshot, 0, 0);
+
+    if (currentTool === 'room') {
+        const name = document.getElementById('roomNameInput').value.trim();
+        const rw   = document.getElementById('roomW').value;
+        const rh   = document.getElementById('roomH').value;
+        const sizeLabel = (rw && rh) ? `${rw}' × ${rh}'` : null;
+        const w = x - startX, h = y - startY;
+        let fx = startX, fy = startY;
+        if (snapToWall) {
+            const snapped = snapInsideWalls(startX, startY, w, h);
+            fx = snapped.x; fy = snapped.y;
+        }
+        // FIX 3: assign unique color per placed room
+        const uniqueColor = getNextUniqueColor();
+        placedRooms.push({ x: fx, y: fy, w, h, name, color: uniqueColor.color, bg: uniqueColor.bg, sizeLabel });
+        drawRoomOverlays();
+        document.getElementById('roomNameInput').value = '';
+        document.getElementById('roomW').value = '';
+        document.getElementById('roomH').value = '';
+    } else {
+        drawShape(startX, startY, x, y, false, '');
+        // Save wall/door/window state (without rooms)
+        // First clear rooms, save, then redraw rooms
+        const tempState = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+        wallHistory.push(tempState);
+        if (wallHistory.length > 50) wallHistory.shift();
+        drawRoomOverlays();
+    }
+    drawCompass();
+});
+
+// ── DRAW SHAPE (doors, windows, room drag preview) ──
+function drawShape(x1, y1, x2, y2, isPreview, name) {
+    ctx.save();
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+
+    if (currentTool === 'room') {
+        const w = x2 - x1, h = y2 - y1;
+        const rw = document.getElementById('roomW').value;
+        const rh = document.getElementById('roomH').value;
+        const sizeLabel = (rw && rh) ? `${rw}' × ${rh}'` : null;
+        // Use current selected type color for preview only
+        drawRoomShape(x1, y1, w, h, name, selectedRoomType.color, selectedRoomType.bg, sizeLabel, isPreview);
+
+    } else if (currentTool === 'door') {
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth   = currentThickness;
+        const dx = x2-x1, dy = y2-y1, len = Math.sqrt(dx*dx+dy*dy);
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        if (len > 10) {
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath(); ctx.arc(x1, y1, len, angle, angle+Math.PI/2); ctx.stroke();
+        }
+
+    } else if (currentTool === 'window') {
+        ctx.strokeStyle = '#0e7490';
+        ctx.lineWidth   = currentThickness;
+        const w = x2-x1, h = y2-y1;
+        ctx.strokeRect(x1, y1, w, h);
+        ctx.setLineDash([3,3]);
+        ctx.beginPath(); ctx.moveTo(x1+w/2,y1); ctx.lineTo(x1+w/2,y2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1,y1+h/2); ctx.lineTo(x2,y1+h/2); ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    ctx.restore();
+}
+
+// ── ADD ROOM BY SIZE ──
+let roomOffset = 0;
+function addRoomBySize() {
+    const name = document.getElementById('roomNameInput').value.trim() || selectedRoomType.label;
+    const rw   = parseFloat(document.getElementById('roomW').value) || 0;
+    const rh   = parseFloat(document.getElementById('roomH').value) || 0;
+
+    if (!name) {
+        const inp = document.getElementById('roomNameInput');
+        inp.style.border = '1.5px solid #ef4444';
+        inp.focus();
+        setTimeout(() => inp.style.border = '', 1500);
+        return;
+    }
+    if (rw <= 0 || rh <= 0) { alert('Please enter valid Width and Height.'); return; }
+
+    const pxW = rw * 20;
+    const pxH = rh * 20;
+
+    const padding = 24;
+    const cols = Math.floor((drawCanvas.width - padding) / (Math.min(pxW, 200) + padding + 10));
+    const col  = roomOffset % Math.max(cols, 1);
+    const row  = Math.floor(roomOffset / Math.max(cols, 1));
+    let x1 = padding + col * (Math.min(pxW, 200) + padding + 10);
+    let y1 = padding + row * (Math.min(pxH, 160) + padding + 10);
+
+    x1 = Math.min(x1, drawCanvas.width  - pxW - 10);
+    y1 = Math.min(y1, drawCanvas.height - pxH - 10);
+
+    if (snapToWall) {
+        const s = snapInsideWalls(x1, y1, pxW, pxH);
+        x1 = s.x; y1 = s.y;
+    }
+
+    // FIX 3: unique color for each room
+    const uniqueColor = getNextUniqueColor();
+    const sizeLabel = `${rw}' × ${rh}'`;
+    placedRooms.push({ x: x1, y: y1, w: pxW, h: pxH, name, color: uniqueColor.color, bg: uniqueColor.bg, sizeLabel });
+    redrawAll();
+
+    roomOffset++;
+    document.getElementById('roomNameInput').value = '';
+    document.getElementById('roomW').value = '';
+    document.getElementById('roomH').value = '';
+}
+
+// ── UNDO ──
+function undoLast() {
+    if (placedRooms.length > 0) {
+        placedRooms.pop();
+        colorIndex = Math.max(0, colorIndex - 1);
+    } else {
+        wallHistory.pop();
+    }
+    redrawAll();
+    if (currentTool === 'wall') drawWallPointsOnly();
+}
+
+// ── CLEAR ──
+function clearCanvas() {
+    if (!confirm('Clear the entire canvas?')) return;
+    ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    wallHistory = []; wallPoints = []; placedRooms = []; roomOffset = 0; colorIndex = 0;
+    updateWallPointsUI();
+    drawCompass();
+    document.getElementById('aiSuggestionBox').style.display = 'none';
+}
+
+// ── DOWNLOAD ──
+function downloadLayout() {
+    const merged = document.createElement('canvas');
+    merged.width = drawCanvas.width; merged.height = drawCanvas.height;
+    const mCtx = merged.getContext('2d');
+    mCtx.fillStyle = '#ffffff'; mCtx.fillRect(0,0,merged.width,merged.height);
+    mCtx.drawImage(gridCanvas, 0, 0);
+    mCtx.drawImage(drawCanvas, 0, 0);
+    const link = document.createElement('a');
+    link.download = 'cosmo_vastu_layout.png';
+    link.href = merged.toDataURL('image/png');
+    link.click();
+}
+
+// ── MODAL ──
+function openCreateModal() {
+    const merged = document.createElement('canvas');
+    merged.width = drawCanvas.width; merged.height = drawCanvas.height;
+    const mCtx = merged.getContext('2d');
+    mCtx.fillStyle = '#ffffff'; mCtx.fillRect(0,0,merged.width,merged.height);
+    mCtx.drawImage(drawCanvas, 0, 0);
+    const dataUrl = merged.toDataURL('image/png');
+    document.getElementById('layoutImageData').value = dataUrl;
+    document.getElementById('modalPreview').src       = dataUrl;
+    document.getElementById('createModal').classList.add('open');
+}
+function closeModal() { document.getElementById('createModal').classList.remove('open'); }
+document.getElementById('createModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+document.getElementById('createForm').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Creating project...';
+});
+
+// ════════════════════════════════════════════
+//  FEATURE 4: AI Room Suggestions
+//  Uses Anthropic API to suggest Vastu-based
+//  room placements based on current layout
+// ════════════════════════════════════════════
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+async function getAiSuggestions() {
+    const btn = document.getElementById('btnAiSuggest');
+    const box = document.getElementById('aiSuggestionBox');
+    const textEl = document.getElementById('aiSuggestionText');
+
+    const roomList = placedRooms.map(rm => {
+        const cx = rm.x + rm.w / 2;
+        const cy = rm.y + rm.h / 2;
+        const cw = drawCanvas.width, ch = drawCanvas.height;
+        const horizDir = cx < cw * 0.4 ? 'West' : cx > cw * 0.6 ? 'East' : 'Center';
+        const vertDir  = cy < ch * 0.4 ? 'North' : cy > ch * 0.6 ? 'South' : 'Center';
+        return `${rm.name || 'Unnamed room'} (placed in ${vertDir}-${horizDir})`;
+    }).join(', ');
+
+    const hasWalls = wallHistory.length > 0;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span style="font-size:14px;">✦</span> Thinking...';
+    box.style.display = 'block';
+    textEl.innerHTML = '<span class="ai-loading">Consulting Vastu principles...</span>';
+
+    try {
+        const response = await fetch('/vastu-suggest/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                roomList: roomList || 'No rooms placed yet',
+                hasWalls: hasWalls
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            textEl.innerHTML = `<span style="color:#dc2626;">Error: ${data.error}</span>`;
+        } else {
+            const formatted = data.suggestion
+                .split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                    if (line.startsWith('→')) {
+                        return `<div style="margin-bottom:6px; padding:4px 6px; background:rgba(212,175,55,0.1); border-left:2px solid #d4af37; border-radius:3px;">${line.trim()}</div>`;
+                    }
+                    return `<div style="margin-bottom:4px;">${line.trim()}</div>`;
+                })
+                .join('');
+            textEl.innerHTML = formatted;
+        }
+
+    } catch (err) {
+        textEl.innerHTML = '<span style="color:#dc2626;">Network error. Please try again.</span>';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<span style="font-size:14px;">✦</span> Suggest Room Placements';
+}
+
+// ── INIT ──
+setTool('wall');
+</script>
+</body>
+</html>
