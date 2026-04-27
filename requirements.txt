@@ -1,3 +1,4 @@
+whitenoise
 aiohappyeyeballs
 aiohttp
 aiosignal
