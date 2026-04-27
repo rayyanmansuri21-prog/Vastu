@@ -55,7 +55,7 @@ pydantic
 pydantic_core
 PyMySQL
 pyparsing
-python-dateutilpost0
+python-dateutil
 python-docx
 python-dotenv
 razorpay
