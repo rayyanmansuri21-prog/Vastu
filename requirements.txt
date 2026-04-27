@@ -13,7 +13,7 @@ contourpy
 cryptography
 cycler
 distro
-Django
+Django==5.2.3
 ezdxf
 fonttools
 fpdf
@@ -40,7 +40,7 @@ kiwisolver
 lxml
 matplotlib
 multidict
-mysqlclient
+mysqlclient==2.2.8
 numpy
 openai
 packaging
