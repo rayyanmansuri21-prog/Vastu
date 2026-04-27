@@ -144,7 +144,7 @@
                                 <div style="font-size:12px; color:#5a7a55; margin-top:2px;">One-time · Never expires</div>
                             </div>
                             <div style="text-align:right;">
-                                <div style="font-size:20px; font-weight:800; color:#0f1f0e;">₹49</div>
+                                <div style="font-size:20px; font-weight:800; color:#0f1f0e;">₹1</div>
                                 <div style="font-size:10px; color:#94a3b8;">one time</div>
                             </div>
                         </div>
@@ -854,7 +854,7 @@ function selectPlan(plan, el) {
     selectedPlan = plan;
     document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    const labels = { basic: '₹49 — +1 Project', standard: '₹299 — +2 Projects', premium: '₹499 — +7 Projects' };
+    const labels = { basic: '₹1 — +1 Project', standard: '₹299 — +2 Projects', premium: '₹499 — +7 Projects' };
     const btn = document.getElementById('payBtn');
     btn.disabled = false;
     btn.textContent = `Pay ${labels[plan]}`;
