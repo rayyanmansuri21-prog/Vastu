@@ -9,6 +9,7 @@
 
 # Database
 db.sqlite3
+*.sqlite3
 
 # Python cache
 __pycache__/
