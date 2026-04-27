@@ -40,7 +40,6 @@ kiwisolver
 lxml
 matplotlib
 multidict
-mysqlclient==2.2.8
 numpy
 openai
 packaging
@@ -53,7 +52,6 @@ pyasn1_modules
 pycparser
 pydantic
 pydantic_core
-PyMySQL
 pyparsing
 python-dateutil
 python-docx
